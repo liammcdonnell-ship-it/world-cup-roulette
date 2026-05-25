@@ -3,6 +3,7 @@ import Nav from "@/components/nav";
 import AdminNav from "@/components/AdminNav";
 import AdminGameLinks from "@/components/AdminGameLinks";
 import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type GameRow = {
   id: number;
@@ -38,7 +39,7 @@ async function addGame(formData: FormData) {
     return;
   }
 
-  await supabase.from("games").insert({
+  await supabaseAdmin.from("games").insert({
     name,
     slug,
   });
@@ -51,7 +52,7 @@ async function deleteGame(formData: FormData) {
 
   const gameId = Number(formData.get("game_id"));
 
-  await supabase.from("games").delete().eq("id", gameId);
+  await supabaseAdmin.from("games").delete().eq("id", gameId);
 
   await refreshPages();
 }
