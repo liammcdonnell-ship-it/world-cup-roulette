@@ -1,19 +1,22 @@
 import { revalidatePath } from "next/cache";
 import Nav from "@/components/nav";
-import { supabase } from "@/lib/supabase";
 import AdminNav from "@/components/AdminNav";
+import AdminGameLinks from "@/components/AdminGameLinks";
+import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type TeamRow = {
-  team_id: number;
-  team_name: string;
+  id: number;
+  name: string;
   code: string | null;
-  total_goals: number;
 };
 
-type MatchDisplayRow = {
+type MatchRow = {
   id: number;
   home_team_name: string;
+  home_team_code: string | null;
   away_team_name: string;
+  away_team_code: string | null;
   home_goals: number | null;
   away_goals: number | null;
   status: string;
@@ -21,6 +24,7 @@ type MatchDisplayRow = {
 
 async function refreshPages() {
   revalidatePath("/");
+  revalidatePath("/games");
   revalidatePath("/matches");
   revalidatePath("/team-totals");
   revalidatePath("/admin/matches");
@@ -33,17 +37,29 @@ async function addMatch(formData: FormData) {
   const awayTeamId = Number(formData.get("away_team_id"));
   const homeGoalsRaw = formData.get("home_goals")?.toString();
   const awayGoalsRaw = formData.get("away_goals")?.toString();
-  const status = formData.get("status")?.toString() || "scheduled";
+  const status = formData.get("status")?.toString() || "finished";
 
-  const homeGoals = homeGoalsRaw === "" ? null : Number(homeGoalsRaw);
-  const awayGoals = awayGoalsRaw === "" ? null : Number(awayGoalsRaw);
+  if (!homeTeamId || !awayTeamId || homeTeamId === awayTeamId) {
+    return;
+  }
 
-  await supabase.from("matches").insert({
+  const homeGoals =
+    homeGoalsRaw === undefined || homeGoalsRaw === ""
+      ? null
+      : Number(homeGoalsRaw);
+
+  const awayGoals =
+    awayGoalsRaw === undefined || awayGoalsRaw === ""
+      ? null
+      : Number(awayGoalsRaw);
+
+  await supabaseAdmin.from("matches").insert({
     home_team_id: homeTeamId,
     away_team_id: awayTeamId,
     home_goals: homeGoals,
     away_goals: awayGoals,
     status,
+    source: "manual",
   });
 
   await refreshPages();
@@ -54,33 +70,48 @@ async function deleteMatch(formData: FormData) {
 
   const matchId = Number(formData.get("match_id"));
 
-  await supabase.from("matches").delete().eq("id", matchId);
+  await supabaseAdmin.from("matches").delete().eq("id", matchId);
 
   await refreshPages();
 }
 
 export default async function AdminMatchesPage() {
-  const { data: teamsData } = await supabase
-    .from("team_totals")
-    .select("team_id, team_name, code, total_goals")
-    .order("team_name", { ascending: true });
+  const { data: teamsData, error: teamsError } = await supabase
+    .from("teams")
+    .select("id, name, code")
+    .order("name", { ascending: true });
 
-  const { data: matchesData } = await supabase
+  const { data: matchesData, error: matchesError } = await supabase
     .from("matches_display")
-    .select("id, home_team_name, away_team_name, home_goals, away_goals, status");
+    .select(
+      "id, home_team_name, home_team_code, away_team_name, away_team_code, home_goals, away_goals, status"
+    );
+
+  if (teamsError || matchesError) {
+    return (
+      <main className="min-h-screen p-8">
+        <h1 className="text-3xl font-bold mb-4">Admin: Matches</h1>
+        <p className="text-red-600">Error loading matches admin.</p>
+        <pre className="mt-4 bg-gray-100 p-4 rounded">
+          {teamsError?.message ?? matchesError?.message}
+        </pre>
+      </main>
+    );
+  }
 
   const teams = (teamsData ?? []) as TeamRow[];
-  const matches = (matchesData ?? []) as MatchDisplayRow[];
+  const matches = (matchesData ?? []) as MatchRow[];
 
   return (
     <main className="min-h-screen p-8 bg-gray-50">
       <div className="max-w-5xl mx-auto">
-       <Nav activePage="admin" />
-<AdminNav activePage="matches" />
+        <Nav activePage="admin" />
+        <AdminNav activePage="matches" />
+        <AdminGameLinks />
 
         <h1 className="text-4xl font-bold mb-2">Admin: Matches</h1>
         <p className="mb-8 text-gray-600">
-          Add or delete match scores here. Finished matches feed the leaderboard.
+          Add or delete match scores. Finished matches feed the leaderboards.
         </p>
 
         <form
@@ -97,8 +128,9 @@ export default async function AdminMatchesPage() {
               >
                 <option value="">Choose home team</option>
                 {teams.map((team) => (
-                  <option key={team.team_id} value={team.team_id}>
-                    {team.team_name}
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                    {team.code ? ` (${team.code})` : ""}
                   </option>
                 ))}
               </select>
@@ -113,8 +145,9 @@ export default async function AdminMatchesPage() {
               >
                 <option value="">Choose away team</option>
                 {teams.map((team) => (
-                  <option key={team.team_id} value={team.team_id}>
-                    {team.team_name}
+                  <option key={team.id} value={team.id}>
+                    {team.name}
+                    {team.code ? ` (${team.code})` : ""}
                   </option>
                 ))}
               </select>
@@ -163,14 +196,14 @@ export default async function AdminMatchesPage() {
             type="submit"
             className="rounded-lg border px-4 py-3 font-semibold bg-gray-100 hover:bg-gray-200"
           >
-            Save match
+            Add match
           </button>
         </form>
 
         <h2 className="text-2xl font-bold mb-4">Current matches</h2>
 
-        <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
-          <table className="w-full text-left">
+        <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">
+          <table className="w-full min-w-[760px] text-left">
             <thead className="bg-gray-100">
               <tr>
                 <th className="p-4">Match</th>
@@ -183,7 +216,14 @@ export default async function AdminMatchesPage() {
               {matches.map((match) => (
                 <tr key={match.id} className="border-t">
                   <td className="p-4 font-semibold">
-                    {match.home_team_name} v {match.away_team_name}
+                    {match.home_team_name}
+                    {match.home_team_code
+                      ? ` (${match.home_team_code})`
+                      : ""}{" "}
+                    v {match.away_team_name}
+                    {match.away_team_code
+                      ? ` (${match.away_team_code})`
+                      : ""}
                   </td>
                   <td className="p-4">
                     {match.home_goals ?? "-"} - {match.away_goals ?? "-"}
@@ -202,12 +242,20 @@ export default async function AdminMatchesPage() {
                   </td>
                 </tr>
               ))}
+
+              {matches.length === 0 && (
+                <tr>
+                  <td className="p-4 text-gray-600" colSpan={4}>
+                    No matches yet.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
 
         <p className="mt-4 text-sm text-gray-500">
-          Careful: delete happens immediately. We can add a confirmation step later.
+          Only matches marked as finished count towards team and player totals.
         </p>
       </div>
     </main>
