@@ -2,6 +2,7 @@ import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import GameNav from "@/components/GameNav";
 import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type GameRow = {
   id: number;
@@ -66,7 +67,7 @@ async function drawTeam(formData: FormData) {
     redirect(`/games/${gameSlug}/draw?error=Choose a player first`);
   }
 
-  const { data: game } = await supabase
+  const { data: game } = await supabaseAdmin
     .from("games")
     .select("id, name, slug")
     .eq("slug", gameSlug)
@@ -76,7 +77,7 @@ async function drawTeam(formData: FormData) {
     redirect("/games");
   }
 
-  const { data: player } = await supabase
+  const { data: player } = await supabaseAdmin
     .from("players")
     .select("id, game_id")
     .eq("id", playerId)
@@ -86,7 +87,7 @@ async function drawTeam(formData: FormData) {
     redirect(`/games/${gameSlug}/draw?error=Invalid player for this game`);
   }
 
-  const { data: drawRoundSetting } = await supabase
+  const { data: drawRoundSetting } = await supabaseAdmin
     .from("draw_round_settings")
     .select("draw_round, label, is_open, scoring_starts_at")
     .eq("draw_round", drawRound)
@@ -100,7 +101,7 @@ async function drawTeam(formData: FormData) {
 
   const limit = drawLimits[drawRound] ?? 1;
 
-  const { data: existingAssignments } = await supabase
+  const { data: existingAssignments } = await supabaseAdmin
     .from("player_teams")
     .select("team_id, draw_round")
     .eq("player_id", playerId);
@@ -121,7 +122,7 @@ async function drawTeam(formData: FormData) {
     assignments.map((assignment) => assignment.team_id)
   );
 
-  const { data: teamsData } = await supabase
+  const { data: teamsData } = await supabaseAdmin
     .from("teams")
     .select("id, name, code")
     .order("name", { ascending: true });
@@ -141,7 +142,7 @@ async function drawTeam(formData: FormData) {
   const randomIndex = Math.floor(Math.random() * availableTeams.length);
   const drawnTeam = availableTeams[randomIndex];
 
-  await supabase.from("player_teams").insert({
+  await supabaseAdmin.from("player_teams").insert({
     player_id: playerId,
     team_id: drawnTeam.id,
     draw_round: drawRound,
@@ -151,6 +152,8 @@ async function drawTeam(formData: FormData) {
 
   revalidatePath(`/games/${gameSlug}`);
   revalidatePath(`/games/${gameSlug}/draw`);
+  revalidatePath(`/games/${gameSlug}/team-totals`);
+  revalidatePath(`/games/${gameSlug}/matches`);
   revalidatePath("/admin/player-teams");
 
   redirect(
