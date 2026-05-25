@@ -3,6 +3,7 @@ import Nav from "@/components/nav";
 import AdminNav from "@/components/AdminNav";
 import AdminGameLinks from "@/components/AdminGameLinks";
 import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type PlayerRow = {
   id: number;
@@ -40,9 +41,9 @@ const fallbackDrawRoundLabels: Record<string, string> = {
 
 async function refreshPages() {
   revalidatePath("/");
+  revalidatePath("/games");
   revalidatePath("/team-totals");
   revalidatePath("/admin/player-teams");
-  revalidatePath("/games");
 }
 
 async function addPlayerTeam(formData: FormData) {
@@ -56,13 +57,13 @@ async function addPlayerTeam(formData: FormData) {
     return;
   }
 
-  const { data: drawRoundSetting } = await supabase
+  const { data: drawRoundSetting } = await supabaseAdmin
     .from("draw_round_settings")
     .select("draw_round, scoring_starts_at")
     .eq("draw_round", drawRound)
     .single();
 
-  await supabase.from("player_teams").insert({
+  await supabaseAdmin.from("player_teams").insert({
     player_id: playerId,
     team_id: teamId,
     draw_round: drawRound,
@@ -80,7 +81,7 @@ async function deletePlayerTeam(formData: FormData) {
 
   const playerTeamId = Number(formData.get("player_team_id"));
 
-  await supabase.from("player_teams").delete().eq("id", playerTeamId);
+  await supabaseAdmin.from("player_teams").delete().eq("id", playerTeamId);
 
   await refreshPages();
 }
@@ -224,8 +225,8 @@ export default async function AdminPlayerTeamsPage() {
 
         <h2 className="text-2xl font-bold mb-4">Current assignments</h2>
 
-        <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
-          <table className="w-full text-left">
+        <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">
+          <table className="w-full min-w-[900px] text-left">
             <thead className="bg-gray-100">
               <tr>
                 <th className="p-4">Player</th>
