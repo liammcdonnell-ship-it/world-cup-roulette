@@ -1,7 +1,9 @@
 import { revalidatePath } from "next/cache";
 import Nav from "@/components/nav";
-import { supabase } from "@/lib/supabase";
 import AdminNav from "@/components/AdminNav";
+import AdminGameLinks from "@/components/AdminGameLinks";
+import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type TeamRow = {
   id: number;
@@ -11,10 +13,10 @@ type TeamRow = {
 
 async function refreshPages() {
   revalidatePath("/");
+  revalidatePath("/games");
   revalidatePath("/team-totals");
   revalidatePath("/matches");
   revalidatePath("/admin/teams");
-  revalidatePath("/admin/matches");
 }
 
 async function addTeam(formData: FormData) {
@@ -27,7 +29,7 @@ async function addTeam(formData: FormData) {
     return;
   }
 
-  await supabase.from("teams").insert({
+  await supabaseAdmin.from("teams").insert({
     name,
     code: code || null,
   });
@@ -40,24 +42,35 @@ async function deleteTeam(formData: FormData) {
 
   const teamId = Number(formData.get("team_id"));
 
-  await supabase.from("teams").delete().eq("id", teamId);
+  await supabaseAdmin.from("teams").delete().eq("id", teamId);
 
   await refreshPages();
 }
 
 export default async function AdminTeamsPage() {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("teams")
     .select("id, name, code")
     .order("name", { ascending: true });
+
+  if (error) {
+    return (
+      <main className="min-h-screen p-8">
+        <h1 className="text-3xl font-bold mb-4">Admin: Teams</h1>
+        <p className="text-red-600">Error loading teams.</p>
+        <pre className="mt-4 bg-gray-100 p-4 rounded">{error.message}</pre>
+      </main>
+    );
+  }
 
   const teams = (data ?? []) as TeamRow[];
 
   return (
     <main className="min-h-screen p-8 bg-gray-50">
-      <div className="max-w-3xl mx-auto">
+      <div className="max-w-4xl mx-auto">
         <Nav activePage="admin" />
         <AdminNav activePage="teams" />
+        <AdminGameLinks />
 
         <h1 className="text-4xl font-bold mb-2">Admin: Teams</h1>
         <p className="mb-8 text-gray-600">
@@ -74,17 +87,16 @@ export default async function AdminTeamsPage() {
               name="name"
               required
               className="border rounded-lg p-3"
-              placeholder="e.g. England"
+              placeholder="e.g. Brazil"
             />
           </label>
 
           <label className="grid gap-2">
-            <span className="font-semibold">Team code</span>
+            <span className="font-semibold">Code</span>
             <input
               name="code"
-              maxLength={3}
               className="border rounded-lg p-3"
-              placeholder="e.g. ENG"
+              placeholder="e.g. BRA"
             />
           </label>
 
@@ -138,7 +150,8 @@ export default async function AdminTeamsPage() {
         </div>
 
         <p className="mt-4 text-sm text-gray-500">
-          Careful: deleting a team can also remove match and player-team data connected to that team.
+          Careful: deleting a team also deletes related matches and player-team
+          assignments.
         </p>
       </div>
     </main>
