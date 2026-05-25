@@ -3,6 +3,7 @@ import Nav from "@/components/nav";
 import AdminNav from "@/components/AdminNav";
 import AdminGameLinks from "@/components/AdminGameLinks";
 import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
 type DrawRoundSetting = {
   draw_round: string;
@@ -13,6 +14,8 @@ type DrawRoundSetting = {
 };
 
 async function refreshPages() {
+  revalidatePath("/");
+  revalidatePath("/games");
   revalidatePath("/draw");
   revalidatePath("/admin/draw-rounds");
   revalidatePath("/admin/player-teams");
@@ -35,23 +38,19 @@ async function toggleDrawRound(formData: FormData) {
     is_open: nextIsOpen,
   };
 
-  // Group Stage always counts from the start, so its scoring start stays null.
   if (drawRound === "initial") {
     updateData.scoring_starts_at = null;
   }
 
-  // When opening Round of 32 or Quarter Finals, set the scoring start time.
-  // This means teams drawn in that round only count goals from this point onwards.
   if (nextIsOpen && drawRound !== "initial") {
     updateData.scoring_starts_at = new Date().toISOString();
   }
 
-  // If locking a later round again, clear its scoring start time.
   if (!nextIsOpen && drawRound !== "initial") {
     updateData.scoring_starts_at = null;
   }
 
-  await supabase
+  await supabaseAdmin
     .from("draw_round_settings")
     .update(updateData)
     .eq("draw_round", drawRound);
@@ -90,8 +89,8 @@ export default async function AdminDrawRoundsPage() {
           Later-round teams only count goals scored after that round opens.
         </p>
 
-        <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
-          <table className="w-full text-left">
+        <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">
+          <table className="w-full min-w-[760px] text-left">
             <thead className="bg-gray-100">
               <tr>
                 <th className="p-4">Draw round</th>
@@ -104,9 +103,7 @@ export default async function AdminDrawRoundsPage() {
               {drawRounds.map((round) => (
                 <tr key={round.draw_round} className="border-t">
                   <td className="p-4 font-semibold">{round.label}</td>
-                  <td className="p-4">
-                    {round.is_open ? "Open" : "Locked"}
-                  </td>
+                  <td className="p-4">{round.is_open ? "Open" : "Locked"}</td>
                   <td className="p-4 text-gray-600">
                     {round.scoring_starts_at
                       ? new Date(round.scoring_starts_at).toLocaleString()
