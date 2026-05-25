@@ -1,7 +1,9 @@
 import { revalidatePath } from "next/cache";
 import Nav from "@/components/nav";
 import { supabase } from "@/lib/supabase";
+import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import AdminNav from "@/components/AdminNav";
+import AdminGameLinks from "@/components/AdminGameLinks";
 
 type PlayerRow = {
   id: number;
@@ -18,6 +20,7 @@ type GameRow = {
 
 async function refreshPages() {
   revalidatePath("/");
+  revalidatePath("/games");
   revalidatePath("/admin/players");
   revalidatePath("/admin/player-teams");
 }
@@ -32,7 +35,7 @@ async function addPlayer(formData: FormData) {
     return;
   }
 
-  await supabase.from("players").insert({
+  await supabaseAdmin.from("players").insert({
     name,
     game_id: gameId,
   });
@@ -45,7 +48,7 @@ async function deletePlayer(formData: FormData) {
 
   const playerId = Number(formData.get("player_id"));
 
-  await supabase.from("players").delete().eq("id", playerId);
+  await supabaseAdmin.from("players").delete().eq("id", playerId);
 
   await refreshPages();
 }
@@ -79,6 +82,7 @@ export default async function AdminPlayersPage() {
       <div className="max-w-4xl mx-auto">
         <Nav activePage="admin" />
         <AdminNav activePage="players" />
+        <AdminGameLinks />
 
         <h1 className="text-4xl font-bold mb-2">Admin: Players</h1>
         <p className="mb-8 text-gray-600">
