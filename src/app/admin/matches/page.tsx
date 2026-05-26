@@ -4,6 +4,7 @@ import AdminNav from "@/components/AdminNav";
 import AdminGameLinks from "@/components/AdminGameLinks";
 import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { syncScoresFromFootballData } from "@/lib/syncScores";
 
 type TeamRow = {
   id: number;
@@ -75,6 +76,13 @@ async function deleteMatch(formData: FormData) {
   await refreshPages();
 }
 
+async function syncScoresNow() {
+  "use server";
+
+  await syncScoresFromFootballData();
+  await refreshPages();
+}
+
 export default async function AdminMatchesPage() {
   const { data: teamsData, error: teamsError } = await supabase
     .from("teams")
@@ -115,9 +123,29 @@ export default async function AdminMatchesPage() {
         </p>
 
         <form
+          action={syncScoresNow}
+          className="mb-10 rounded-xl border bg-white shadow-sm p-6"
+        >
+          <h2 className="text-2xl font-bold mb-2">Automatic scoring</h2>
+          <p className="mb-4 text-gray-600">
+            Pull the latest World Cup fixtures and scores from football-data.org.
+            The daily Vercel cron also runs this automatically.
+          </p>
+
+          <button
+            type="submit"
+            className="rounded-lg border px-4 py-3 font-semibold bg-green-50 hover:bg-green-100"
+          >
+            Sync scores now
+          </button>
+        </form>
+
+        <form
           action={addMatch}
           className="mb-10 rounded-xl border bg-white shadow-sm p-6 grid gap-4"
         >
+          <h2 className="text-2xl font-bold">Manual match entry</h2>
+
           <div className="grid md:grid-cols-2 gap-4">
             <label className="grid gap-2">
               <span className="font-semibold">Home team</span>
