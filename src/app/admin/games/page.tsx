@@ -84,7 +84,7 @@ export default async function AdminGamesPage() {
 
         <h1 className="text-4xl font-bold mb-2">Admin: Games</h1>
         <p className="mb-8 text-gray-600">
-          Create separate World Cup Roulette games for different groups.
+          Create separate World Cup Blackjack games for different groups.
         </p>
 
         <form

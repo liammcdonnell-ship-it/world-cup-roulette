@@ -13,7 +13,7 @@ export default async function GamesPage() {
       <main className="min-h-screen p-4 sm:p-8 bg-gray-50">
         <div className="max-w-xl mx-auto rounded-xl border bg-white shadow-sm p-6">
           <h1 className="text-3xl sm:text-4xl font-bold mb-4">
-            World Cup Roulette
+            World Cup Blackjack
           </h1>
 
           <p className="text-gray-600">
