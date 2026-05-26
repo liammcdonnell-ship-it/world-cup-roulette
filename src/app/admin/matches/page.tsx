@@ -1,4 +1,5 @@
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import Nav from "@/components/nav";
 import AdminNav from "@/components/AdminNav";
 import AdminGameLinks from "@/components/AdminGameLinks";
@@ -64,6 +65,8 @@ async function addMatch(formData: FormData) {
   });
 
   await refreshPages();
+
+  redirect("/admin/matches?message=Manual match added");
 }
 
 async function deleteMatch(formData: FormData) {
@@ -74,16 +77,52 @@ async function deleteMatch(formData: FormData) {
   await supabaseAdmin.from("matches").delete().eq("id", matchId);
 
   await refreshPages();
+
+  redirect("/admin/matches?message=Match deleted");
 }
 
 async function syncScoresNow() {
   "use server";
 
-  await syncScoresFromFootballData();
+  const result = await syncScoresFromFootballData();
+
   await refreshPages();
+
+  if (!result.ok) {
+    const errorMessage =
+      "error" in result && result.error
+        ? result.error.toString()
+        : "Score sync failed";
+
+    redirect(`/admin/matches?error=${encodeURIComponent(errorMessage)}`);
+  }
+
+  const syncedCount =
+    "synced_count" in result ? result.synced_count : 0;
+
+  const skippedCount =
+    "skipped_count" in result ? result.skipped_count : 0;
+
+  const matchCount =
+    "match_count_from_api" in result ? result.match_count_from_api : 0;
+
+  redirect(
+    `/admin/matches?message=${encodeURIComponent(
+      `Sync complete: ${syncedCount} synced, ${skippedCount} skipped from ${matchCount} API matches.`
+    )}`
+  );
 }
 
-export default async function AdminMatchesPage() {
+export default async function AdminMatchesPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{
+    message?: string;
+    error?: string;
+  }>;
+}) {
+  const query = await searchParams;
+
   const { data: teamsData, error: teamsError } = await supabase
     .from("teams")
     .select("id, name, code")
@@ -121,6 +160,18 @@ export default async function AdminMatchesPage() {
         <p className="mb-8 text-gray-600">
           Add or delete match scores. Finished matches feed the leaderboards.
         </p>
+
+        {query?.message && (
+          <div className="mb-6 rounded-xl border bg-green-50 p-4 font-semibold text-green-900">
+            {query.message}
+          </div>
+        )}
+
+        {query?.error && (
+          <div className="mb-6 rounded-xl border bg-red-50 p-4 font-semibold text-red-900">
+            {query.error}
+          </div>
+        )}
 
         <form
           action={syncScoresNow}
