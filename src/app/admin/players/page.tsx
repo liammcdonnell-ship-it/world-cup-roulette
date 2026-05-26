@@ -1,13 +1,12 @@
 import { revalidatePath } from "next/cache";
 import Nav from "@/components/nav";
 import { supabase } from "@/lib/supabase";
-import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import AdminNav from "@/components/AdminNav";
-import AdminGameLinks from "@/components/AdminGameLinks";
 
 type PlayerRow = {
   id: number;
   name: string;
+  is_paid: boolean;
   game_name: string;
   game_slug: string;
 };
@@ -30,15 +29,31 @@ async function addPlayer(formData: FormData) {
 
   const name = formData.get("name")?.toString().trim();
   const gameId = Number(formData.get("game_id"));
+  const isPaid = formData.get("is_paid") === "on";
 
   if (!name || !gameId) {
     return;
   }
 
-  await supabaseAdmin.from("players").insert({
+  await supabase.from("players").insert({
     name,
     game_id: gameId,
+    is_paid: isPaid,
   });
+
+  await refreshPages();
+}
+
+async function togglePaid(formData: FormData) {
+  "use server";
+
+  const playerId = Number(formData.get("player_id"));
+  const nextIsPaid = formData.get("next_is_paid") === "true";
+
+  await supabase
+    .from("players")
+    .update({ is_paid: nextIsPaid })
+    .eq("id", playerId);
 
   await refreshPages();
 }
@@ -48,7 +63,7 @@ async function deletePlayer(formData: FormData) {
 
   const playerId = Number(formData.get("player_id"));
 
-  await supabaseAdmin.from("players").delete().eq("id", playerId);
+  await supabase.from("players").delete().eq("id", playerId);
 
   await refreshPages();
 }
@@ -64,6 +79,7 @@ export default async function AdminPlayersPage() {
     .select(`
       id,
       name,
+      is_paid,
       games(name, slug)
     `)
     .order("name", { ascending: true });
@@ -73,16 +89,16 @@ export default async function AdminPlayersPage() {
   const players = (playersData ?? []).map((row: any) => ({
     id: row.id,
     name: row.name,
+    is_paid: row.is_paid ?? false,
     game_name: row.games?.name ?? "Unknown game",
     game_slug: row.games?.slug ?? "",
   })) as PlayerRow[];
 
   return (
     <main className="min-h-screen p-8 bg-gray-50">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-5xl mx-auto">
         <Nav activePage="admin" />
         <AdminNav activePage="players" />
-        <AdminGameLinks />
 
         <h1 className="text-4xl font-bold mb-2">Admin: Players</h1>
         <p className="mb-8 text-gray-600">
@@ -120,6 +136,11 @@ export default async function AdminPlayersPage() {
             </select>
           </label>
 
+          <label className="flex items-center gap-2">
+            <input name="is_paid" type="checkbox" className="h-4 w-4" />
+            <span className="font-semibold">Paid £5?</span>
+          </label>
+
           <button
             type="submit"
             className="rounded-lg border px-4 py-3 font-semibold bg-gray-100 hover:bg-gray-200"
@@ -135,16 +156,24 @@ export default async function AdminPlayersPage() {
             <thead className="bg-gray-100">
               <tr>
                 <th className="p-4">Player</th>
+                <th className="p-4">Paid?</th>
                 <th className="p-4">Game</th>
                 <th className="p-4">Game link</th>
-                <th className="p-4">Action</th>
+                <th className="p-4">Payment</th>
+                <th className="p-4">Delete</th>
               </tr>
             </thead>
             <tbody>
               {players.map((player) => (
                 <tr key={player.id} className="border-t">
                   <td className="p-4 font-semibold">{player.name}</td>
+
+                  <td className="p-4">
+                    {player.is_paid ? "💰👍 Paid" : "💰👎 Not paid"}
+                  </td>
+
                   <td className="p-4">{player.game_name}</td>
+
                   <td className="p-4">
                     {player.game_slug ? (
                       <a
@@ -157,6 +186,24 @@ export default async function AdminPlayersPage() {
                       <span className="text-gray-500">No link</span>
                     )}
                   </td>
+
+                  <td className="p-4">
+                    <form action={togglePaid}>
+                      <input type="hidden" name="player_id" value={player.id} />
+                      <input
+                        type="hidden"
+                        name="next_is_paid"
+                        value={player.is_paid ? "false" : "true"}
+                      />
+                      <button
+                        type="submit"
+                        className="rounded-lg border px-3 py-2 text-sm font-semibold bg-gray-100 hover:bg-gray-200"
+                      >
+                        {player.is_paid ? "Mark unpaid" : "Mark paid"}
+                      </button>
+                    </form>
+                  </td>
+
                   <td className="p-4">
                     <form action={deletePlayer}>
                       <input type="hidden" name="player_id" value={player.id} />
@@ -173,7 +220,7 @@ export default async function AdminPlayersPage() {
 
               {players.length === 0 && (
                 <tr>
-                  <td className="p-4 text-gray-600" colSpan={4}>
+                  <td className="p-4 text-gray-600" colSpan={6}>
                     No players yet.
                   </td>
                 </tr>

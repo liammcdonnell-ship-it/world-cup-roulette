@@ -1,64 +1,79 @@
+/* eslint-disable @next/next/no-img-element */
+
+import Link from "next/link";
 import { notFound } from "next/navigation";
+import GameNav from "@/components/GameNav";
 import { supabase } from "@/lib/supabase";
 
-type Game = {
-  id: string;
-  name: string;
-  slug: string;
+type GameLeaderboardRow = {
+  game_id: number;
+  game_name: string;
+  game_slug: string;
+  player_id: number;
+  player_name: string;
+  is_paid: boolean;
+  total_goals: number;
+  status: string;
 };
 
-type LeaderboardRow = {
-  player_id?: string;
-  player_name?: string;
-  name?: string;
-  total_goals?: number;
-  goals?: number;
-  status?: string;
-  teams?: string[] | string | null;
-  team_names?: string[] | string | null;
-  assigned_teams?: string[] | string | null;
+type GameLeaderboardTeamRow = {
+  player_id: number;
+  player_team_id: number;
+  draw_round: string;
+  team_name: string;
+  team_code: string | null;
+  flag_image_url: string | null;
+  counting_goals: number;
 };
 
-function getPlayerName(row: LeaderboardRow) {
-  return row.player_name ?? row.name ?? "Unknown player";
-}
+const ENTRY_FEE = 5;
 
-function getGoals(row: LeaderboardRow) {
-  return row.total_goals ?? row.goals ?? 0;
-}
+const drawRoundOrder: Record<string, number> = {
+  initial: 1,
+  second: 2,
+  third: 3,
+};
 
-function getTeams(row: LeaderboardRow) {
-  const rawTeams = row.teams ?? row.team_names ?? row.assigned_teams ?? [];
-
-  if (Array.isArray(rawTeams)) {
-    return rawTeams.filter(Boolean);
+function getDisplayStatus(totalGoals: number) {
+  if (totalGoals === 21) {
+    return "🎯 Perfect 21!";
   }
 
-  if (typeof rawTeams === "string") {
-    return rawTeams
-      .split(",")
-      .map((team) => team.trim())
-      .filter(Boolean);
+  if (totalGoals > 21) {
+    return "💩 Bust";
   }
 
-  return [];
+  return `${21 - totalGoals} to go!`;
 }
 
-function getStatus(row: LeaderboardRow) {
-  const goals = getGoals(row);
+function getRowClass(totalGoals: number) {
+  if (totalGoals === 21) {
+    return "border-t align-top bg-green-50";
+  }
 
-  if (row.status) return row.status;
-  if (goals === 21) return "Exactly 21";
-  if (goals > 21) return "Bust";
+  if (totalGoals > 21) {
+    return "border-t align-top bg-red-50";
+  }
 
-  return `${21 - goals} short`;
+  return "border-t align-top";
 }
 
-function sortLeaderboard(rows: LeaderboardRow[]) {
+function getStatusBadgeClass(totalGoals: number) {
+  if (totalGoals === 21) {
+    return "inline-flex rounded-full border border-green-200 bg-green-100 px-2 py-1 text-xs font-semibold text-green-800";
+  }
+
+  if (totalGoals > 21) {
+    return "inline-flex rounded-full border border-red-200 bg-red-100 px-2 py-1 text-xs font-semibold text-red-800";
+  }
+
+  return "inline-flex rounded-full border border-gray-200 bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700";
+}
+
+function sortLeaderboard(rows: GameLeaderboardRow[]) {
   return [...rows].sort((a, b) => {
-    const aGoals = getGoals(a);
-    const bGoals = getGoals(b);
-
+    const aGoals = a.total_goals;
+    const bGoals = b.total_goals;
     const aBust = aGoals > 21;
     const bBust = bGoals > 21;
 
@@ -83,100 +98,249 @@ export default async function GamePage({
 }) {
   const { slug } = await params;
 
-  const { data: game, error: gameError } = await supabase
-    .from("games")
-    .select("id, name, slug")
-    .eq("slug", slug)
-    .single<Game>();
+  const { data: leaderboardData, error: leaderboardError } = await supabase
+    .from("game_leaderboard")
+    .select(
+      "game_id, game_name, game_slug, player_id, player_name, is_paid, total_goals, status"
+    )
+    .eq("game_slug", slug);
 
-  if (gameError || !game) {
-    notFound();
+  if (leaderboardError) {
+    return (
+      <main className="min-h-screen p-4 sm:p-8">
+        <h1 className="text-3xl font-bold mb-4">World Cup Roulette</h1>
+        <p className="text-red-600">Error loading game leaderboard.</p>
+        <pre className="mt-4 overflow-x-auto bg-gray-100 p-4 rounded">
+          {leaderboardError.message}
+        </pre>
+      </main>
+    );
   }
 
-  const { data: leaderboardRows, error: leaderboardError } = await supabase
-    .from("game_leaderboard")
-    .select("*")
-    .eq("game_id", game.id);
+  const leaderboard = sortLeaderboard(
+    (leaderboardData ?? []) as GameLeaderboardRow[]
+  );
 
-  const rows = sortLeaderboard((leaderboardRows ?? []) as LeaderboardRow[]);
+  if (leaderboard.length === 0) {
+    const { data: game } = await supabase
+      .from("games")
+      .select("name, slug")
+      .eq("slug", slug)
+      .single();
+
+    if (!game) {
+      notFound();
+    }
+
+    return (
+      <main className="min-h-screen p-4 sm:p-8 bg-gray-50">
+        <div className="max-w-5xl mx-auto">
+          <GameNav slug={slug} activePage="leaderboard" />
+
+          <h1 className="text-3xl sm:text-4xl font-bold mb-2">{game.name}</h1>
+          <p className="mb-8 text-gray-600">
+            Exact 21 wins. Closest under 21 is next best. Over 21 is bust.
+          </p>
+
+          <div className="rounded-xl border bg-white shadow-sm p-6">
+            <h2 className="text-2xl font-bold mb-2">No players yet</h2>
+            <p className="text-gray-600">
+              Add players to this game in the admin area.
+            </p>
+          </div>
+        </div>
+      </main>
+    );
+  }
+
+  const gameName = leaderboard[0].game_name;
+  const gameSlug = leaderboard[0].game_slug;
+
+  const { data: teamsData, error: teamsError } = await supabase
+    .from("game_leaderboard_teams")
+    .select(
+      "player_id, player_team_id, draw_round, team_name, team_code, flag_image_url, counting_goals"
+    )
+    .eq("game_slug", slug);
+
+  if (teamsError) {
+    return (
+      <main className="min-h-screen p-4 sm:p-8">
+        <h1 className="text-3xl font-bold mb-4">World Cup Roulette</h1>
+        <p className="text-red-600">Error loading team details.</p>
+        <pre className="mt-4 overflow-x-auto bg-gray-100 p-4 rounded">
+          {teamsError.message}
+        </pre>
+      </main>
+    );
+  }
+
+  const leaderboardTeams = (teamsData ?? []) as GameLeaderboardTeamRow[];
+
+  const teamsByPlayer = new Map<number, GameLeaderboardTeamRow[]>();
+
+  for (const team of leaderboardTeams) {
+    const existingTeams = teamsByPlayer.get(team.player_id) ?? [];
+    existingTeams.push(team);
+    teamsByPlayer.set(team.player_id, existingTeams);
+  }
+
+  for (const teams of teamsByPlayer.values()) {
+    teams.sort((a, b) => {
+      const roundDifference =
+        (drawRoundOrder[a.draw_round] ?? 99) -
+        (drawRoundOrder[b.draw_round] ?? 99);
+
+      if (roundDifference !== 0) {
+        return roundDifference;
+      }
+
+      return a.team_name.localeCompare(b.team_name);
+    });
+  }
+
+  const paidPlayers = leaderboard.filter((player) => player.is_paid);
+  const prizePot = paidPlayers.length * ENTRY_FEE;
+  const exactWinners = leaderboard.filter((player) => player.total_goals === 21);
+  const splitPrize =
+    exactWinners.length > 0 ? prizePot / exactWinners.length : null;
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8">
-      <div className="mb-6">
-        <p className="text-sm text-gray-500">World Cup Roulette</p>
-        <h1 className="text-3xl font-bold tracking-tight">{game.name}</h1>
-      </div>
+    <main className="min-h-screen p-4 sm:p-8 bg-gray-50">
+      <div className="max-w-5xl mx-auto">
+        <GameNav slug={gameSlug} activePage="leaderboard" />
 
-      {leaderboardError ? (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
-          Could not load leaderboard.
+        <h1 className="text-3xl sm:text-4xl font-bold mb-2">{gameName}</h1>
+        <p className="mb-8 text-gray-600">
+          Exact 21 wins. Closest under 21 is next best. Over 21 is bust.
+        </p>
+
+        <div className="mb-8 grid gap-4 md:grid-cols-3">
+          <div className="rounded-xl border bg-white shadow-sm p-4">
+            <h2 className="font-bold text-lg mb-1">💷 Prize pot</h2>
+            <p className="text-3xl font-bold">£{prizePot}</p>
+            <p className="text-sm text-gray-600">
+              {paidPlayers.length} paid player
+              {paidPlayers.length === 1 ? "" : "s"} × £{ENTRY_FEE}
+            </p>
+          </div>
+
+          <div className="rounded-xl border bg-white shadow-sm p-4">
+            <h2 className="font-bold text-lg mb-1">🏆 Prize rule</h2>
+            {exactWinners.length > 1 && splitPrize !== null ? (
+              <p className="text-gray-600">
+                {exactWinners.length} players are on 21, so they currently split
+                the pot: £{splitPrize.toFixed(2)} each.
+              </p>
+            ) : exactWinners.length === 1 ? (
+              <p className="text-gray-600">
+                1 player is currently on 21 and would win the pot.
+              </p>
+            ) : (
+              <p className="text-gray-600">
+                If more than one player finishes on 21, they split the pot.
+              </p>
+            )}
+          </div>
+
+          <div className="rounded-xl border bg-white shadow-sm p-4">
+            <h2 className="font-bold text-lg mb-1">🎲 Pick Teams</h2>
+            <p className="text-gray-600 mb-3">
+              Players can draw their own teams for this game.
+            </p>
+            <Link href={`/games/${gameSlug}/draw`} className="underline">
+              Go to pick teams page
+            </Link>
+          </div>
         </div>
-      ) : rows.length === 0 ? (
-        <div className="rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-600">
-          No players have been added to this game yet.
-        </div>
-      ) : (
-        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm">
-          <table className="w-full table-auto text-left text-sm">
-            <thead className="bg-gray-50 text-xs uppercase tracking-wide text-gray-500">
+
+        <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-gray-100">
               <tr>
-                <th className="w-14 px-3 py-3">Rank</th>
-                <th className="px-3 py-3">Player</th>
-                <th className="w-20 px-3 py-3 text-right">Goals</th>
-                <th className="w-24 px-3 py-3 text-right">Status</th>
+                <th className="w-12 p-3 sm:p-4 align-top">Rank</th>
+                <th className="p-3 sm:p-4 align-top">Player / Teams</th>
+                <th className="w-16 p-3 sm:p-4 align-top text-right">Goals</th>
+                <th className="w-24 p-3 sm:p-4 align-top text-right">
+                  Status
+                </th>
               </tr>
             </thead>
 
-            <tbody className="divide-y divide-gray-100">
-              {rows.map((row, index) => {
-                const teams = getTeams(row);
-                const goals = getGoals(row);
-                const status = getStatus(row);
+            <tbody>
+              {leaderboard.map((row, index) => {
+                const playerTeams = teamsByPlayer.get(row.player_id) ?? [];
 
                 return (
-                  <tr key={row.player_id ?? `${getPlayerName(row)}-${index}`}>
-                    <td className="px-3 py-4 align-top font-semibold text-gray-700">
+                  <tr
+                    key={row.player_id}
+                    className={getRowClass(row.total_goals)}
+                  >
+                    <td className="p-3 sm:p-4 align-top font-semibold text-gray-700">
                       {index + 1}
                     </td>
 
-                    <td className="px-3 py-4 align-top">
+                    <td className="p-3 sm:p-4 align-top">
                       <div className="font-semibold text-gray-950">
-                        {getPlayerName(row)}
+                        {row.total_goals === 21 && (
+                          <span className="mr-1" aria-label="perfect 21">
+                            🏆
+                          </span>
+                        )}
+                        {row.total_goals > 21 && (
+                          <span className="mr-1" aria-label="bust">
+                            💩
+                          </span>
+                        )}
+                        {row.player_name}{" "}
+                        <span title={row.is_paid ? "Paid" : "Not paid"}>
+                          {row.is_paid ? "💰👍" : "💰👎"}
+                        </span>
                       </div>
 
-                      <div className="mt-2 flex flex-wrap gap-1.5">
-                        {teams.length > 0 ? (
-                          teams.map((team) => (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {playerTeams.length > 0 ? (
+                          playerTeams.map((team) => (
                             <span
-                              key={team}
-                              className="rounded-full bg-gray-100 px-2 py-1 text-xs font-medium text-gray-700"
+                              key={team.player_team_id}
+                              className="inline-flex items-center gap-1 rounded-full border bg-white px-2 py-1 text-xs font-medium text-gray-700"
                             >
-                              {team}
+                              {team.flag_image_url && (
+                                <img
+                                  src={team.flag_image_url}
+                                  alt=""
+                                  className="h-3 w-4 rounded-sm object-cover"
+                                />
+                              )}
+                              <span>
+                                {team.team_name} ({team.counting_goals})
+                              </span>
                             </span>
                           ))
                         ) : (
-                          <span className="text-xs text-gray-400">
+                          <span className="text-xs text-gray-500">
                             No teams drawn yet
                           </span>
                         )}
                       </div>
+
+                      <div className="mt-3">
+                        <Link
+                          href={`/games/${gameSlug}/players/${row.player_id}/matches`}
+                          className="inline-flex rounded-lg border bg-gray-100 px-3 py-2 text-xs font-semibold hover:bg-gray-200"
+                        >
+                          View matches
+                        </Link>
+                      </div>
                     </td>
 
-                    <td className="px-3 py-4 text-right align-top text-lg font-bold text-gray-950">
-                      {goals}
+                    <td className="p-3 sm:p-4 align-top text-right text-lg font-bold text-gray-950">
+                      {row.total_goals}
                     </td>
 
-                    <td className="px-3 py-4 text-right align-top">
-                      <span
-                        className={
-                          goals > 21
-                            ? "text-sm font-semibold text-red-600"
-                            : goals === 21
-                              ? "text-sm font-semibold text-green-600"
-                              : "text-sm font-medium text-gray-700"
-                        }
-                      >
-                        {status}
+                    <td className="p-3 sm:p-4 align-top text-right">
+                      <span className={getStatusBadgeClass(row.total_goals)}>
+                        {getDisplayStatus(row.total_goals)}
                       </span>
                     </td>
                   </tr>
@@ -185,7 +349,12 @@ export default async function GamePage({
             </tbody>
           </table>
         </div>
-      )}
+
+        <p className="mt-4 text-sm text-gray-500">
+          💰👍 = paid. 💰👎 = not paid. The number in brackets is that
+          team&apos;s counting goals for that player.
+        </p>
+      </div>
     </main>
   );
 }
