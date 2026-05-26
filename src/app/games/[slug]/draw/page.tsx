@@ -46,13 +46,13 @@ const drawLimits: Record<string, number> = {
   third: 1,
 };
 
-const fallbackDrawRoundLabels: Record<string, string> = {
+const fallbackPickRoundLabels: Record<string, string> = {
   initial: "Group Stage",
   second: "Round of 32",
   third: "Quarter Finals",
 };
 
-async function drawTeam(formData: FormData) {
+async function pickTeam(formData: FormData) {
   "use server";
 
   const gameSlug = formData.get("game_slug")?.toString();
@@ -95,7 +95,7 @@ async function drawTeam(formData: FormData) {
 
   if (!drawRoundSetting?.is_open) {
     redirect(
-      `/games/${gameSlug}/draw?player=${playerId}&error=That draw round is currently locked`
+      `/games/${gameSlug}/draw?player=${playerId}&error=That pick round is currently locked`
     );
   }
 
@@ -114,7 +114,7 @@ async function drawTeam(formData: FormData) {
 
   if (alreadyInThisRound >= limit) {
     redirect(
-      `/games/${gameSlug}/draw?player=${playerId}&error=You have already completed this draw round`
+      `/games/${gameSlug}/draw?player=${playerId}&error=You have already completed this pick round`
     );
   }
 
@@ -140,11 +140,11 @@ async function drawTeam(formData: FormData) {
   }
 
   const randomIndex = Math.floor(Math.random() * availableTeams.length);
-  const drawnTeam = availableTeams[randomIndex];
+  const pickedTeam = availableTeams[randomIndex];
 
   await supabaseAdmin.from("player_teams").insert({
     player_id: playerId,
-    team_id: drawnTeam.id,
+    team_id: pickedTeam.id,
     draw_round: drawRound,
     scoring_starts_at:
       drawRound === "initial" ? null : drawRoundSetting.scoring_starts_at,
@@ -157,8 +157,8 @@ async function drawTeam(formData: FormData) {
   revalidatePath("/admin/player-teams");
 
   redirect(
-    `/games/${gameSlug}/draw?player=${playerId}&message=You drew ${encodeURIComponent(
-      drawnTeam.name
+    `/games/${gameSlug}/draw?player=${playerId}&message=You picked ${encodeURIComponent(
+      pickedTeam.name
     )}`
   );
 }
@@ -206,12 +206,12 @@ export default async function GameDrawPage({
 
   const drawSettings = (drawSettingsData ?? []) as DrawRoundSetting[];
 
-  const drawRoundLabels = drawSettings.reduce<Record<string, string>>(
+  const pickRoundLabels = drawSettings.reduce<Record<string, string>>(
     (labels, setting) => {
       labels[setting.draw_round] = setting.label;
       return labels;
     },
-    { ...fallbackDrawRoundLabels }
+    { ...fallbackPickRoundLabels }
   );
 
   const { data: playerTeamsData } =
@@ -272,18 +272,18 @@ export default async function GameDrawPage({
         <GameNav slug={slug} activePage="draw" />
 
         <h1 className="text-3xl sm:text-4xl font-bold mb-2">
-          Draw Your Team
+          Pick Your Teams
         </h1>
         <p className="mb-2 text-gray-600">
           Game: <span className="font-semibold">{game.name}</span>
         </p>
         <p className="mb-8 text-gray-600">
-          Choose your name, choose an open draw round, then draw one random team.
-          You cannot draw the same team twice.
+          Choose your name, choose an open pick round, then pick one random
+          team. You cannot pick the same team twice.
         </p>
 
         <div className="mb-8 rounded-xl border bg-white shadow-sm p-4 sm:p-6">
-          <h2 className="text-2xl font-bold mb-4">Draw rounds</h2>
+          <h2 className="text-2xl font-bold mb-4">Pick rounds</h2>
 
           <div className="grid md:grid-cols-3 gap-4">
             {drawSettings.map((setting) => (
@@ -321,7 +321,7 @@ export default async function GameDrawPage({
         {selectedPlayer && (
           <div className="mb-8 rounded-xl border bg-white shadow-sm p-4 sm:p-6">
             <h2 className="text-2xl font-bold mb-4">
-              {selectedPlayer.name}&apos;s draw status
+              {selectedPlayer.name}&apos;s pick status
             </h2>
 
             <div className="grid md:grid-cols-3 gap-4">
@@ -347,7 +347,7 @@ export default async function GameDrawPage({
         )}
 
         <form
-          action={drawTeam}
+          action={pickTeam}
           className="mb-10 rounded-xl border bg-white shadow-sm p-4 sm:p-6 grid gap-4"
         >
           <input type="hidden" name="game_slug" value={game.slug} />
@@ -370,7 +370,7 @@ export default async function GameDrawPage({
           </label>
 
           <label className="grid gap-2">
-            <span className="font-semibold">Draw round</span>
+            <span className="font-semibold">Pick round</span>
             <select
               name="draw_round"
               required
@@ -397,7 +397,7 @@ export default async function GameDrawPage({
             type="submit"
             className="rounded-lg border px-4 py-3 font-semibold bg-gray-100 hover:bg-gray-200"
           >
-            Draw team
+            Pick team
           </button>
         </form>
 
@@ -409,7 +409,7 @@ export default async function GameDrawPage({
               <table className="w-full min-w-[560px] text-left">
                 <thead className="bg-gray-100">
                   <tr>
-                    <th className="p-4">Draw round</th>
+                    <th className="p-4">Pick round</th>
                     <th className="p-4">Team</th>
                   </tr>
                 </thead>
@@ -417,7 +417,7 @@ export default async function GameDrawPage({
                   {selectedPlayerAssignments.map((assignment) => (
                     <tr key={assignment.id} className="border-t">
                       <td className="p-4 text-gray-600">
-                        {drawRoundLabels[assignment.draw_round] ??
+                        {pickRoundLabels[assignment.draw_round] ??
                           assignment.draw_round}
                       </td>
                       <td className="p-4 font-semibold">
@@ -443,7 +443,7 @@ export default async function GameDrawPage({
                   {selectedPlayerAssignments.length === 0 && (
                     <tr>
                       <td className="p-4 text-gray-600" colSpan={2}>
-                        No teams drawn yet.
+                        No teams picked yet.
                       </td>
                     </tr>
                   )}
@@ -461,7 +461,7 @@ export default async function GameDrawPage({
               <tr>
                 <th className="p-4">Player</th>
                 <th className="p-4">Team</th>
-                <th className="p-4">Draw round</th>
+                <th className="p-4">Pick round</th>
               </tr>
             </thead>
             <tbody>
@@ -486,7 +486,7 @@ export default async function GameDrawPage({
                     </span>
                   </td>
                   <td className="p-4 text-gray-600">
-                    {drawRoundLabels[assignment.draw_round] ??
+                    {pickRoundLabels[assignment.draw_round] ??
                       assignment.draw_round}
                   </td>
                 </tr>
@@ -495,7 +495,7 @@ export default async function GameDrawPage({
               {assignments.length === 0 && (
                 <tr>
                   <td className="p-4 text-gray-600" colSpan={3}>
-                    No teams have been drawn yet.
+                    No teams have been picked yet.
                   </td>
                 </tr>
               )}
@@ -505,7 +505,7 @@ export default async function GameDrawPage({
 
         <p className="mt-4 text-sm text-gray-500">
           Duplicates are allowed between different players, but not for the same
-          player. Later-round teams only count goals scored after that draw round
+          player. Later-round teams only count goals scored after that pick round
           opens.
         </p>
       </div>

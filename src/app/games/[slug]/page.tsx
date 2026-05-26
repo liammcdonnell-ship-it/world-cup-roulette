@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import GameNav from "@/components/GameNav";
 import { supabase } from "@/lib/supabase";
@@ -27,6 +28,30 @@ const drawRoundOrder: Record<string, number> = {
   second: 2,
   third: 3,
 };
+
+function getDisplayStatus(totalGoals: number) {
+  if (totalGoals === 21) {
+    return "🏆 Perfect";
+  }
+
+  if (totalGoals > 21) {
+    return "💩 Bust";
+  }
+
+  return `${21 - totalGoals} to go!`;
+}
+
+function getRowClass(totalGoals: number) {
+  if (totalGoals === 21) {
+    return "border-t align-top bg-green-50";
+  }
+
+  if (totalGoals > 21) {
+    return "border-t align-top bg-red-50";
+  }
+
+  return "border-t align-top";
+}
 
 export default async function GamePage({
   params,
@@ -116,14 +141,14 @@ export default async function GamePage({
         </p>
 
         <div className="mb-8 rounded-xl border bg-white shadow-sm p-4">
-          <p className="font-semibold">Private group link</p>
+          <p className="font-semibold">Game leaderboard</p>
           <p className="text-gray-600">
-            This page only shows the leaderboard for this game.
+            Track each player&apos;s collected teams and current score.
           </p>
         </div>
 
         <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">
-          <table className="w-full min-w-[820px] text-left">
+          <table className="w-full min-w-[900px] text-left">
             <thead className="bg-gray-100">
               <tr>
                 <th className="p-4">Rank</th>
@@ -138,35 +163,64 @@ export default async function GamePage({
                 const playerTeams = teamsByPlayer.get(row.player_id) ?? [];
 
                 return (
-                  <tr key={row.player_id} className="border-t align-top">
+                  <tr key={row.player_id} className={getRowClass(row.total_goals)}>
                     <td className="p-4">{index + 1}</td>
-                    <td className="p-4 font-semibold">{row.player_name}</td>
-                    <td className="p-4">{row.total_goals}</td>
-                    <td className="p-4">{row.status}</td>
-                    <td className="p-4">
-                      {playerTeams.length > 0 ? (
-                        <div className="flex flex-wrap gap-2">
-                          {playerTeams.map((team) => (
-                            <span
-                              key={team.player_team_id}
-                              className="inline-flex items-center gap-2 rounded-full border bg-gray-50 px-3 py-1 text-sm"
-                            >
-                              {team.flag_image_url && (
-                                <img
-                                  src={team.flag_image_url}
-                                  alt={`${team.team_name} flag`}
-                                  className="h-4 w-6 rounded-sm object-cover"
-                                />
-                              )}
-                              <span>
-                                {team.team_name} ({team.counting_goals})
-                              </span>
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-gray-500">No teams yet</span>
+
+                    <td className="p-4 font-semibold">
+                      {row.total_goals === 21 && (
+                        <span className="mr-2" aria-label="winner">
+                          🏆
+                        </span>
                       )}
+                      {row.total_goals > 21 && (
+                        <span className="mr-2" aria-label="bust">
+                          💩
+                        </span>
+                      )}
+                      {row.player_name}
+                    </td>
+
+                    <td className="p-4 font-semibold">{row.total_goals}</td>
+
+                    <td className="p-4 font-semibold">
+                      {getDisplayStatus(row.total_goals)}
+                    </td>
+
+                    <td className="p-4">
+                      <div className="grid gap-3">
+                        {playerTeams.length > 0 ? (
+                          <div className="flex flex-wrap gap-2">
+                            {playerTeams.map((team) => (
+                              <span
+                                key={team.player_team_id}
+                                className="inline-flex items-center gap-2 rounded-full border bg-white px-3 py-1 text-sm"
+                              >
+                                {team.flag_image_url && (
+                                  <img
+                                    src={team.flag_image_url}
+                                    alt={`${team.team_name} flag`}
+                                    className="h-4 w-6 rounded-sm object-cover"
+                                  />
+                                )}
+                                <span>
+                                  {team.team_name} ({team.counting_goals})
+                                </span>
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          <span className="text-gray-500">No teams yet</span>
+                        )}
+
+                        <div>
+                          <Link
+                            href={`/games/${slug}/players/${row.player_id}/matches`}
+                            className="inline-flex rounded-lg border bg-gray-100 px-3 py-2 text-sm font-semibold hover:bg-gray-200"
+                          >
+                            View matches
+                          </Link>
+                        </div>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -177,8 +231,8 @@ export default async function GamePage({
 
         <p className="mt-4 text-sm text-gray-500">
           The number in brackets is that team&apos;s counting goals for that
-          player. Later-round teams only count goals scored after that draw
-          round opens.
+          player. Later-round teams only count goals scored after that pick round
+          opens.
         </p>
       </div>
     </main>

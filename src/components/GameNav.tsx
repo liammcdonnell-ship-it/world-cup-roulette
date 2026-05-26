@@ -32,7 +32,7 @@ export default async function GameNav({ slug, activePage }: GameNavProps) {
         </Link>
 
         <Link href={`/games/${slug}/draw`} className={linkClass("draw")}>
-          Draw
+          Pick Teams
         </Link>
 
         <Link

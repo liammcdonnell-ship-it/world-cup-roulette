@@ -45,24 +45,24 @@ export default async function GameRulesPage({
           <h2 className="text-2xl font-bold">World Cup Roulette</h2>
 
           <p>
-            Each player starts with three random teams in the Group Stage draw.
+            Each player starts with three random teams in the Group Stage pick.
           </p>
 
           <p>
-            After the group stage, each player can draw one extra team in the
-            Round of 32 draw. Later in the tournament, each player can draw one
-            final team in the Quarter Finals draw.
+            After the group stage, each player can pick one extra team in the
+            Round of 32 pick. Later in the tournament, each player can pick one
+            final team in the Quarter Finals pick.
           </p>
 
           <p>
-            Different players can have the same team, but one player cannot draw
+            Different players can have the same team, but one player cannot pick
             the same team twice.
           </p>
 
           <p>
-            Group Stage draw teams count goals from the start of the tournament.
-            Round of 32 and Quarter Finals draw teams only count goals scored
-            after that draw round opens.
+            Group Stage pick teams count goals from the start of the tournament.
+            Round of 32 and Quarter Finals pick teams only count goals scored
+            after that pick round opens.
           </p>
 
           <p>
