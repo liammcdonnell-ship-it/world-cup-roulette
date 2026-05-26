@@ -108,7 +108,7 @@ export default async function GamePage({
   if (leaderboardError) {
     return (
       <main className="min-h-screen p-4 sm:p-8">
-        <h1 className="text-3xl font-bold mb-4">World Cup Roulette</h1>
+        <h1 className="text-3xl font-bold mb-4">World Cup Blackjack</h1>
         <p className="text-red-600">Error loading game leaderboard.</p>
         <pre className="mt-4 overflow-x-auto bg-gray-100 p-4 rounded">
           {leaderboardError.message}
@@ -137,7 +137,12 @@ export default async function GamePage({
         <div className="max-w-5xl mx-auto">
           <GameNav slug={slug} activePage="leaderboard" />
 
-          <h1 className="text-3xl sm:text-4xl font-bold mb-2">{game.name}</h1>
+          <h1 className="text-3xl sm:text-5xl font-bold mb-2">
+            World Cup Blackjack
+          </h1>
+          <p className="text-lg sm:text-xl font-semibold text-gray-700 mb-2">
+            {game.name}
+          </p>
           <p className="mb-8 text-gray-600">
             Exact 21 wins. Closest under 21 is next best. Over 21 is bust.
           </p>
@@ -166,7 +171,7 @@ export default async function GamePage({
   if (teamsError) {
     return (
       <main className="min-h-screen p-4 sm:p-8">
-        <h1 className="text-3xl font-bold mb-4">World Cup Roulette</h1>
+        <h1 className="text-3xl font-bold mb-4">World Cup Blackjack</h1>
         <p className="text-red-600">Error loading team details.</p>
         <pre className="mt-4 overflow-x-auto bg-gray-100 p-4 rounded">
           {teamsError.message}
@@ -210,7 +215,12 @@ export default async function GamePage({
       <div className="max-w-5xl mx-auto">
         <GameNav slug={gameSlug} activePage="leaderboard" />
 
-        <h1 className="text-3xl sm:text-4xl font-bold mb-2">{gameName}</h1>
+        <h1 className="text-3xl sm:text-5xl font-bold mb-2">
+          World Cup Blackjack
+        </h1>
+        <p className="text-lg sm:text-xl font-semibold text-gray-700 mb-2">
+          {gameName}
+        </p>
         <p className="mb-8 text-gray-600">
           Exact 21 wins. Closest under 21 is next best. Over 21 is bust.
         </p>
