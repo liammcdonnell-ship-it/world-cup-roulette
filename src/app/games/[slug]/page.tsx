@@ -145,7 +145,7 @@ export default async function GamePage({
           </p>
           <p className="mb-8 text-gray-600">
             Draw three teams. Count the goals. Finish on 21 goals to win. Two
-            further teams are drawn later in the World Cup.
+            further teams are drawn later in the World Cup. Over 21 is bust.
           </p>
 
           <div className="rounded-xl border bg-white shadow-sm p-6">
@@ -221,7 +221,7 @@ export default async function GamePage({
         </p>
         <p className="mb-8 text-gray-600">
           Draw three teams. Count the goals. Finish on 21 goals to win. Two
-          further teams are drawn later in the World Cup.
+          further teams are drawn later in the World Cup. Over 21 is bust.
         </p>
 
         <div className="mb-8 grid gap-4 md:grid-cols-2">
