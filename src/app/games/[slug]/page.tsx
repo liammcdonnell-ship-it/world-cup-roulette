@@ -144,7 +144,8 @@ export default async function GamePage({
             {game.name}
           </p>
           <p className="mb-8 text-gray-600">
-            Exact 21 wins. Closest under 21 is next best. Over 21 is bust.
+            Draw three teams. Count the goals. Finish on 21 goals to win. Two
+            further teams are drawn later in the World Cup.
           </p>
 
           <div className="rounded-xl border bg-white shadow-sm p-6">
@@ -206,9 +207,6 @@ export default async function GamePage({
 
   const paidPlayers = leaderboard.filter((player) => player.is_paid);
   const prizePot = paidPlayers.length * ENTRY_FEE;
-  const exactWinners = leaderboard.filter((player) => player.total_goals === 21);
-  const splitPrize =
-    exactWinners.length > 0 ? prizePot / exactWinners.length : null;
 
   return (
     <main className="min-h-screen p-4 sm:p-8 bg-gray-50">
@@ -222,10 +220,11 @@ export default async function GamePage({
           {gameName}
         </p>
         <p className="mb-8 text-gray-600">
-          Exact 21 wins. Closest under 21 is next best. Over 21 is bust.
+          Draw three teams. Count the goals. Finish on 21 goals to win. Two
+          further teams are drawn later in the World Cup.
         </p>
 
-        <div className="mb-8 grid gap-4 md:grid-cols-3">
+        <div className="mb-8 grid gap-4 md:grid-cols-2">
           <div className="rounded-xl border bg-white shadow-sm p-4">
             <h2 className="font-bold text-lg mb-1">💷 Prize pot</h2>
             <p className="text-3xl font-bold">£{prizePot}</p>
@@ -233,24 +232,6 @@ export default async function GamePage({
               {paidPlayers.length} paid player
               {paidPlayers.length === 1 ? "" : "s"} × £{ENTRY_FEE}
             </p>
-          </div>
-
-          <div className="rounded-xl border bg-white shadow-sm p-4">
-            <h2 className="font-bold text-lg mb-1">🏆 Prize rule</h2>
-            {exactWinners.length > 1 && splitPrize !== null ? (
-              <p className="text-gray-600">
-                {exactWinners.length} players are on 21, so they currently split
-                the pot: £{splitPrize.toFixed(2)} each.
-              </p>
-            ) : exactWinners.length === 1 ? (
-              <p className="text-gray-600">
-                1 player is currently on 21 and would win the pot.
-              </p>
-            ) : (
-              <p className="text-gray-600">
-                If more than one player finishes on 21, they split the pot.
-              </p>
-            )}
           </div>
 
           <div className="rounded-xl border bg-white shadow-sm p-4">
