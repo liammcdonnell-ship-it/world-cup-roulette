@@ -1,3 +1,5 @@
+/* eslint-disable @next/next/no-img-element */
+
 import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import GameNav from "@/components/GameNav";
@@ -19,6 +21,7 @@ type TeamRow = {
   id: number;
   name: string;
   code: string | null;
+  is_eliminated: boolean;
 };
 
 type DrawRoundSetting = {
@@ -51,6 +54,10 @@ const fallbackPickRoundLabels: Record<string, string> = {
   second: "Round of 32",
   third: "Quarter Finals",
 };
+
+function roundAllowsEliminatedTeams(drawRound: string) {
+  return drawRound === "initial";
+}
 
 async function pickTeam(formData: FormData) {
   "use server";
@@ -124,18 +131,28 @@ async function pickTeam(formData: FormData) {
 
   const { data: teamsData } = await supabaseAdmin
     .from("teams")
-    .select("id, name, code")
+    .select("id, name, code, is_eliminated")
     .order("name", { ascending: true });
 
   const teams = (teamsData ?? []) as TeamRow[];
 
-  const availableTeams = teams.filter(
+  const teamsAllowedForThisRound = roundAllowsEliminatedTeams(drawRound)
+    ? teams
+    : teams.filter((team) => !team.is_eliminated);
+
+  const availableTeams = teamsAllowedForThisRound.filter(
     (team) => !alreadyOwnedTeamIds.has(team.id)
   );
 
   if (availableTeams.length === 0) {
+    const errorMessage = roundAllowsEliminatedTeams(drawRound)
+      ? "No available teams left"
+      : "No active teams left for this pick round";
+
     redirect(
-      `/games/${gameSlug}/draw?player=${playerId}&error=No available teams left`
+      `/games/${gameSlug}/draw?player=${playerId}&error=${encodeURIComponent(
+        errorMessage
+      )}`
     );
   }
 
@@ -274,9 +291,11 @@ export default async function GameDrawPage({
         <h1 className="text-3xl sm:text-4xl font-bold mb-2">
           Pick Your Teams
         </h1>
+
         <p className="mb-2 text-gray-600">
           Game: <span className="font-semibold">{game.name}</span>
         </p>
+
         <p className="mb-8 text-gray-600">
           Choose your name, choose an open pick round, then pick one random
           team. You cannot pick the same team twice.
@@ -291,6 +310,11 @@ export default async function GameDrawPage({
                 <p className="font-semibold">{setting.label}</p>
                 <p className="text-sm text-gray-600">
                   {setting.is_open ? "Open" : "Locked"}
+                </p>
+                <p className="mt-2 text-xs text-gray-500">
+                  {setting.draw_round === "initial"
+                    ? "All teams are available"
+                    : "Only active, non-eliminated teams are available"}
                 </p>
                 <p className="mt-2 text-xs text-gray-500">
                   {setting.draw_round === "initial"
@@ -386,7 +410,7 @@ export default async function GameDrawPage({
                   {setting.label}
                   {setting.draw_round === "initial"
                     ? " — up to 3 teams"
-                    : " — 1 team"}
+                    : " — 1 active team"}
                   {!setting.is_open ? " (locked)" : ""}
                 </option>
               ))}
@@ -506,7 +530,7 @@ export default async function GameDrawPage({
         <p className="mt-4 text-sm text-gray-500">
           Duplicates are allowed between different players, but not for the same
           player. Later-round teams only count goals scored after that pick round
-          opens.
+          opens. Eliminated teams cannot be picked in later rounds.
         </p>
       </div>
     </main>

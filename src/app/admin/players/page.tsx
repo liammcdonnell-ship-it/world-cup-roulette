@@ -1,4 +1,5 @@
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import Nav from "@/components/nav";
 import { supabase } from "@/lib/supabase";
 import AdminNav from "@/components/AdminNav";
@@ -17,11 +18,16 @@ type GameRow = {
   slug: string;
 };
 
-async function refreshPages() {
+async function refreshPages(gameSlug?: string) {
   revalidatePath("/");
   revalidatePath("/games");
   revalidatePath("/admin/players");
   revalidatePath("/admin/player-teams");
+
+  if (gameSlug) {
+    revalidatePath(`/games/${gameSlug}`);
+    revalidatePath(`/games/${gameSlug}/draw`);
+  }
 }
 
 async function addPlayer(formData: FormData) {
@@ -31,17 +37,33 @@ async function addPlayer(formData: FormData) {
   const gameId = Number(formData.get("game_id"));
   const isPaid = formData.get("is_paid") === "on";
 
-  if (!name || !gameId) {
-    return;
+  if (!name) {
+    redirect("/admin/players?error=Player name is missing");
   }
 
-  await supabase.from("players").insert({
+  if (!gameId) {
+    redirect("/admin/players?error=Choose a game first");
+  }
+
+  const { data: gameData } = await supabase
+    .from("games")
+    .select("slug")
+    .eq("id", gameId)
+    .single();
+
+  const { error } = await supabase.from("players").insert({
     name,
     game_id: gameId,
     is_paid: isPaid,
   });
 
-  await refreshPages();
+  if (error) {
+    redirect(`/admin/players?error=${encodeURIComponent(error.message)}`);
+  }
+
+  await refreshPages(gameData?.slug);
+
+  redirect(`/admin/players?message=${encodeURIComponent(`${name} added`)}`);
 }
 
 async function togglePaid(formData: FormData) {
@@ -49,39 +71,72 @@ async function togglePaid(formData: FormData) {
 
   const playerId = Number(formData.get("player_id"));
   const nextIsPaid = formData.get("next_is_paid") === "true";
+  const gameSlug = formData.get("game_slug")?.toString();
 
-  await supabase
+  if (!playerId) {
+    redirect("/admin/players?error=Missing player ID");
+  }
+
+  const { error } = await supabase
     .from("players")
     .update({ is_paid: nextIsPaid })
     .eq("id", playerId);
 
-  await refreshPages();
+  if (error) {
+    redirect(`/admin/players?error=${encodeURIComponent(error.message)}`);
+  }
+
+  await refreshPages(gameSlug);
+
+  redirect("/admin/players?message=Payment status updated");
 }
 
 async function deletePlayer(formData: FormData) {
   "use server";
 
   const playerId = Number(formData.get("player_id"));
+  const gameSlug = formData.get("game_slug")?.toString();
 
-  await supabase.from("players").delete().eq("id", playerId);
+  if (!playerId) {
+    redirect("/admin/players?error=Missing player ID");
+  }
 
-  await refreshPages();
+  const { error } = await supabase.from("players").delete().eq("id", playerId);
+
+  if (error) {
+    redirect(`/admin/players?error=${encodeURIComponent(error.message)}`);
+  }
+
+  await refreshPages(gameSlug);
+
+  redirect("/admin/players?message=Player deleted");
 }
 
-export default async function AdminPlayersPage() {
-  const { data: gamesData } = await supabase
+export default async function AdminPlayersPage({
+  searchParams,
+}: {
+  searchParams?: Promise<{
+    message?: string;
+    error?: string;
+  }>;
+}) {
+  const params = await searchParams;
+
+  const { data: gamesData, error: gamesError } = await supabase
     .from("games")
     .select("id, name, slug")
     .order("name", { ascending: true });
 
-  const { data: playersData } = await supabase
+  const { data: playersData, error: playersError } = await supabase
     .from("players")
-    .select(`
+    .select(
+      `
       id,
       name,
       is_paid,
       games(name, slug)
-    `)
+    `
+    )
     .order("name", { ascending: true });
 
   const games = (gamesData ?? []) as GameRow[];
@@ -102,9 +157,33 @@ export default async function AdminPlayersPage() {
 
         <h1 className="text-4xl font-bold mb-2">Admin: Players</h1>
         <p className="mb-8 text-gray-600">
-          Add or delete people playing World Cup Roulette. Each player belongs
+          Add or delete people playing World Cup Blackjack. Each player belongs
           to one game.
         </p>
+
+        {params?.message && (
+          <div className="mb-6 rounded-xl border bg-green-50 p-4 font-semibold">
+            {params.message}
+          </div>
+        )}
+
+        {params?.error && (
+          <div className="mb-6 rounded-xl border bg-red-50 p-4 font-semibold">
+            {params.error}
+          </div>
+        )}
+
+        {gamesError && (
+          <div className="mb-6 rounded-xl border bg-red-50 p-4 font-semibold">
+            Error loading games: {gamesError.message}
+          </div>
+        )}
+
+        {playersError && (
+          <div className="mb-6 rounded-xl border bg-red-50 p-4 font-semibold">
+            Error loading players: {playersError.message}
+          </div>
+        )}
 
         <form
           action={addPlayer}
@@ -151,7 +230,7 @@ export default async function AdminPlayersPage() {
 
         <h2 className="text-2xl font-bold mb-4">Current players</h2>
 
-        <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
+        <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">
           <table className="w-full text-left">
             <thead className="bg-gray-100">
               <tr>
@@ -192,6 +271,11 @@ export default async function AdminPlayersPage() {
                       <input type="hidden" name="player_id" value={player.id} />
                       <input
                         type="hidden"
+                        name="game_slug"
+                        value={player.game_slug}
+                      />
+                      <input
+                        type="hidden"
                         name="next_is_paid"
                         value={player.is_paid ? "false" : "true"}
                       />
@@ -207,6 +291,11 @@ export default async function AdminPlayersPage() {
                   <td className="p-4">
                     <form action={deletePlayer}>
                       <input type="hidden" name="player_id" value={player.id} />
+                      <input
+                        type="hidden"
+                        name="game_slug"
+                        value={player.game_slug}
+                      />
                       <button
                         type="submit"
                         className="rounded-lg border px-3 py-2 text-sm font-semibold bg-red-50 hover:bg-red-100"
