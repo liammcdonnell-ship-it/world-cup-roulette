@@ -13,7 +13,7 @@ export default function RulesPage() {
         </p>
 
         <div className="rounded-xl border bg-white shadow-sm p-4 sm:p-6 space-y-4">
-          <h2 className="text-2xl font-bold">World Cup Roulette</h2>
+          <h2 className="text-2xl font-bold">World Cup Blackjack</h2>
 
           <p>
             Each player starts with three random teams in the Group Stage draw.
