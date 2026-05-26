@@ -1,30 +1,46 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
-type ApiFootballFixture = {
-  fixture: {
-    id: number;
-    date: string | null;
-    status: {
-      short: string | null;
-      long: string | null;
+type FootballDataMatch = {
+  id: number;
+  utcDate: string | null;
+  status: string;
+  homeTeam: {
+    id: number | null;
+    name: string;
+    shortName?: string | null;
+    tla?: string | null;
+  };
+  awayTeam: {
+    id: number | null;
+    name: string;
+    shortName?: string | null;
+    tla?: string | null;
+  };
+  score: {
+    fullTime: {
+      home: number | null;
+      away: number | null;
+    };
+    regularTime?: {
+      home: number | null;
+      away: number | null;
+    };
+    extraTime?: {
+      home: number | null;
+      away: number | null;
+    };
+    penalties?: {
+      home: number | null;
+      away: number | null;
     };
   };
-  league: {
-    round: string | null;
-  };
-  teams: {
-    home: {
-      name: string;
-    };
-    away: {
-      name: string;
-    };
-  };
-  goals: {
-    home: number | null;
-    away: number | null;
-  };
+};
+
+type FootballDataResponse = {
+  matches?: FootballDataMatch[];
+  errorCode?: number;
+  message?: string;
 };
 
 type TeamRow = {
@@ -33,22 +49,8 @@ type TeamRow = {
   code: string | null;
 };
 
-const API_FOOTBALL_URL =
-  "https://v3.football.api-sports.io/fixtures?league=1&season=2026";
-
-const finishedStatuses = new Set(["FT", "AET", "PEN"]);
-
-const liveStatuses = new Set([
-  "1H",
-  "HT",
-  "2H",
-  "ET",
-  "BT",
-  "P",
-  "SUSP",
-  "INT",
-  "LIVE",
-]);
+const FOOTBALL_DATA_URL =
+  "https://api.football-data.org/v4/competitions/WC/matches";
 
 function normaliseName(name: string) {
   return name
@@ -69,7 +71,7 @@ function getTeamAliases(team: TeamRow) {
   }
 
   const manualAliases: Record<string, string[]> = {
-    "united states": ["usa", "united states of america", "usmnt"],
+    "united states": ["usa", "united states of america"],
     "korea republic": ["south korea", "korea republic"],
     "ir iran": ["iran", "islamic republic of iran"],
     "czechia": ["czech republic"],
@@ -78,6 +80,8 @@ function getTeamAliases(team: TeamRow) {
     "cabo verde": ["cape verde"],
     "congo dr": ["dr congo", "d r congo", "democratic republic of congo"],
     "bosnia and herzegovina": ["bosnia", "bosnia herzegovina"],
+    "england": ["eng"],
+    "scotland": ["sco"],
   };
 
   for (const alias of manualAliases[normalised] ?? []) {
@@ -87,16 +91,30 @@ function getTeamAliases(team: TeamRow) {
   return aliases;
 }
 
-function apiStatusToAppStatus(apiStatus: string | null) {
-  if (!apiStatus) {
-    return "scheduled";
+function getApiTeamAliases(team: FootballDataMatch["homeTeam"]) {
+  const aliases = new Set<string>();
+
+  if (team.name) {
+    aliases.add(normaliseName(team.name));
   }
 
-  if (finishedStatuses.has(apiStatus)) {
+  if (team.shortName) {
+    aliases.add(normaliseName(team.shortName));
+  }
+
+  if (team.tla) {
+    aliases.add(normaliseName(team.tla));
+  }
+
+  return Array.from(aliases);
+}
+
+function footballDataStatusToAppStatus(status: string) {
+  if (status === "FINISHED") {
     return "finished";
   }
 
-  if (liveStatuses.has(apiStatus)) {
+  if (["IN_PLAY", "PAUSED", "LIVE"].includes(status)) {
     return "live";
   }
 
@@ -113,6 +131,13 @@ function getRequestSecret(request: NextRequest) {
   return request.nextUrl.searchParams.get("secret");
 }
 
+function getFullTimeGoals(match: FootballDataMatch) {
+  return {
+    home: match.score.fullTime.home,
+    away: match.score.fullTime.away,
+  };
+}
+
 export async function GET(request: NextRequest) {
   const requestSecret = getRequestSecret(request);
 
@@ -123,9 +148,9 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  if (!process.env.API_FOOTBALL_KEY) {
+  if (!process.env.FOOTBALL_DATA_TOKEN) {
     return NextResponse.json(
-      { error: "Missing API_FOOTBALL_KEY" },
+      { error: "Missing FOOTBALL_DATA_TOKEN" },
       { status: 500 }
     );
   }
@@ -151,66 +176,73 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  const apiResponse = await fetch(API_FOOTBALL_URL, {
+  const apiResponse = await fetch(FOOTBALL_DATA_URL, {
     headers: {
-      "x-apisports-key": process.env.API_FOOTBALL_KEY,
+      "X-Auth-Token": process.env.FOOTBALL_DATA_TOKEN,
     },
     cache: "no-store",
   });
 
-  if (!apiResponse.ok) {
-    const errorText = await apiResponse.text();
+  const apiJson = (await apiResponse.json()) as FootballDataResponse;
 
+  if (!apiResponse.ok) {
     return NextResponse.json(
       {
-        error: "API-Football request failed",
+        error: "football-data.org request failed",
         status: apiResponse.status,
-        details: errorText,
+        details: apiJson,
       },
       { status: 500 }
     );
   }
 
-  const apiJson = await apiResponse.json();
-  const fixtures = (apiJson.response ?? []) as ApiFootballFixture[];
+  const matches = apiJson.matches ?? [];
 
   const syncedMatches = [];
-  const skippedFixtures = [];
+  const skippedMatches = [];
 
-  for (const fixture of fixtures) {
-    const externalFixtureId = String(fixture.fixture.id);
-    const homeTeamName = fixture.teams.home.name;
-    const awayTeamName = fixture.teams.away.name;
+  for (const match of matches) {
+    const externalFixtureId = String(match.id);
 
-    const homeTeamId = teamIdByAlias.get(normaliseName(homeTeamName));
-    const awayTeamId = teamIdByAlias.get(normaliseName(awayTeamName));
+    const homeAliases = getApiTeamAliases(match.homeTeam);
+    const awayAliases = getApiTeamAliases(match.awayTeam);
+
+    const homeTeamId = homeAliases
+      .map((alias) => teamIdByAlias.get(alias))
+      .find(Boolean);
+
+    const awayTeamId = awayAliases
+      .map((alias) => teamIdByAlias.get(alias))
+      .find(Boolean);
 
     if (!homeTeamId || !awayTeamId) {
-      skippedFixtures.push({
+      skippedMatches.push({
         fixture_id: externalFixtureId,
-        home_team: homeTeamName,
-        away_team: awayTeamName,
+        home_team: match.homeTeam.name,
+        home_aliases: homeAliases,
+        away_team: match.awayTeam.name,
+        away_aliases: awayAliases,
         reason: "Could not match one or both teams to local teams table",
       });
 
       continue;
     }
 
-    const apiStatus = fixture.fixture.status.short;
-    const appStatus = apiStatusToAppStatus(apiStatus);
+    const appStatus = footballDataStatusToAppStatus(match.status);
+    const goals = getFullTimeGoals(match);
 
     const { error: upsertError } = await supabaseAdmin.from("matches").upsert(
       {
-        external_fixture_id: externalFixtureId,
+        external_fixture_id: `football-data-${externalFixtureId}`,
         home_team_id: homeTeamId,
         away_team_id: awayTeamId,
-        home_goals: fixture.goals.home,
-        away_goals: fixture.goals.away,
+        home_goals: goals.home,
+        away_goals: goals.away,
         status: appStatus,
-        api_status: apiStatus,
-        kickoff_time: fixture.fixture.date,
+        api_status: match.status,
+        kickoff_time: match.utcDate,
         last_synced_at: new Date().toISOString(),
-        source: "api-football",
+        source: "football-data",
       },
       {
         onConflict: "external_fixture_id",
@@ -218,10 +250,10 @@ export async function GET(request: NextRequest) {
     );
 
     if (upsertError) {
-      skippedFixtures.push({
+      skippedMatches.push({
         fixture_id: externalFixtureId,
-        home_team: homeTeamName,
-        away_team: awayTeamName,
+        home_team: match.homeTeam.name,
+        away_team: match.awayTeam.name,
         reason: upsertError.message,
       });
 
@@ -230,20 +262,21 @@ export async function GET(request: NextRequest) {
 
     syncedMatches.push({
       fixture_id: externalFixtureId,
-      home_team: homeTeamName,
-      away_team: awayTeamName,
+      home_team: match.homeTeam.name,
+      away_team: match.awayTeam.name,
       status: appStatus,
-      api_status: apiStatus,
-      score: `${fixture.goals.home ?? "-"}-${fixture.goals.away ?? "-"}`,
+      api_status: match.status,
+      score: `${goals.home ?? "-"}-${goals.away ?? "-"}`,
     });
   }
 
   return NextResponse.json({
     ok: true,
-    fixture_count_from_api: fixtures.length,
+    provider: "football-data.org",
+    match_count_from_api: matches.length,
     synced_count: syncedMatches.length,
-    skipped_count: skippedFixtures.length,
+    skipped_count: skippedMatches.length,
     synced_matches: syncedMatches,
-    skipped_fixtures: skippedFixtures,
+    skipped_matches: skippedMatches,
   });
 }
