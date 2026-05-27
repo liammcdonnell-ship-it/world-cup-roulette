@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import GameNav from "@/components/GameNav";
@@ -171,6 +172,7 @@ async function pickTeam(formData: FormData) {
   revalidatePath(`/games/${gameSlug}/draw`);
   revalidatePath(`/games/${gameSlug}/team-totals`);
   revalidatePath(`/games/${gameSlug}/matches`);
+  revalidatePath("/games/randomness");
   revalidatePath("/admin/player-teams");
 
   redirect(
@@ -296,10 +298,19 @@ export default async function GameDrawPage({
           Game: <span className="font-semibold">{game.name}</span>
         </p>
 
-        <p className="mb-8 text-gray-600">
+        <p className="mb-4 text-gray-600">
           Choose your name, choose an open pick round, then pick one random
           team. You cannot pick the same team twice.
         </p>
+
+        <div className="mb-8">
+          <Link
+            href="/games/randomness"
+            className="inline-flex rounded-lg border bg-white px-4 py-3 font-semibold shadow-sm hover:bg-gray-100"
+          >
+            How random is it?
+          </Link>
+        </div>
 
         <div className="mb-8 rounded-xl border bg-white shadow-sm p-4 sm:p-6">
           <h2 className="text-2xl font-bold mb-4">Pick rounds</h2>
