@@ -17,18 +17,20 @@ type PlayerRow = {
 type PlayerTeamRow = {
   id: number;
   draw_round: string;
-  teams: {
-    id: number;
-    name: string;
-    code: string | null;
-    flag_image_url: string | null;
-  } | null;
+  teams: TeamRow | null;
+};
+
+type TeamRow = {
+  id: number;
+  name: string;
+  code: string | null;
+  flag_image_url: string | null;
 };
 
 type PlayerTeamQueryRow = {
   id: number;
   draw_round: string;
-  teams: PlayerTeamRow["teams"];
+  teams: TeamRow | TeamRow[] | null;
 };
 
 type MatchDisplayRow = {
@@ -144,18 +146,22 @@ export default async function PlayerMatchesPage({
     .order("id", { ascending: true });
 
   const playerTeams = ((playerTeamsData ?? []) as PlayerTeamQueryRow[]).map(
-    (row) => ({
-      id: row.id,
-      draw_round: row.draw_round,
-      teams: row.teams
-        ? {
-            id: row.teams.id,
-            name: row.teams.name,
-            code: row.teams.code,
-            flag_image_url: row.teams.flag_image_url,
-          }
-        : null,
-    })
+    (row) => {
+      const team = Array.isArray(row.teams) ? row.teams[0] : row.teams;
+
+      return {
+        id: row.id,
+        draw_round: row.draw_round,
+        teams: team
+          ? {
+              id: team.id,
+              name: team.name,
+              code: team.code,
+              flag_image_url: team.flag_image_url,
+            }
+          : null,
+      };
+    }
   ) as PlayerTeamRow[];
 
   const teamIds = playerTeams
