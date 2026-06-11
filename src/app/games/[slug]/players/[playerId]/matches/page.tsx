@@ -25,6 +25,12 @@ type PlayerTeamRow = {
   } | null;
 };
 
+type PlayerTeamQueryRow = {
+  id: number;
+  draw_round: string;
+  teams: PlayerTeamRow["teams"];
+};
+
 type MatchDisplayRow = {
   id: number;
   home_team_id: number;
@@ -76,6 +82,7 @@ function formatKickoff(kickoffTime: string | null) {
   }
 
   return new Date(kickoffTime).toLocaleString("en-GB", {
+    timeZone: "Europe/London",
     weekday: "short",
     day: "2-digit",
     month: "short",
@@ -136,18 +143,20 @@ export default async function PlayerMatchesPage({
     .eq("player_id", player.id)
     .order("id", { ascending: true });
 
- const playerTeams = (playerTeamsData ?? []).map((row: any) => ({
-  id: row.id,
-  draw_round: row.draw_round,
-  teams: row.teams
-    ? {
-        id: row.teams.id,
-        name: row.teams.name,
-        code: row.teams.code,
-        flag_image_url: row.teams.flag_image_url,
-      }
-    : null,
-})) as PlayerTeamRow[];
+  const playerTeams = ((playerTeamsData ?? []) as PlayerTeamQueryRow[]).map(
+    (row) => ({
+      id: row.id,
+      draw_round: row.draw_round,
+      teams: row.teams
+        ? {
+            id: row.teams.id,
+            name: row.teams.name,
+            code: row.teams.code,
+            flag_image_url: row.teams.flag_image_url,
+          }
+        : null,
+    })
+  ) as PlayerTeamRow[];
 
   const teamIds = playerTeams
     .map((assignment) => assignment.teams?.id)
