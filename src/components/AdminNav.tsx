@@ -3,6 +3,7 @@ import Link from "next/link";
 type AdminNavProps = {
   activePage:
     | "games"
+    | "leaderboards"
     | "matches"
     | "players"
     | "teams"
@@ -12,12 +13,17 @@ type AdminNavProps = {
 
 export default function AdminNav({ activePage }: AdminNavProps) {
   const linkClass = (page: AdminNavProps["activePage"]) =>
-    page === activePage ? "font-semibold underline" : "underline";
+    page === activePage
+      ? "rounded-lg bg-gray-100 px-3 py-2 font-semibold underline"
+      : "rounded-lg px-3 py-2 underline hover:bg-gray-100";
 
   return (
-    <nav className="mb-8 flex gap-4 rounded-xl border bg-white p-4 shadow-sm">
+    <nav className="mb-8 flex flex-wrap items-center gap-2 rounded-xl border bg-white p-3 text-sm shadow-sm sm:gap-4 sm:p-4 sm:text-base">
       <Link href="/admin/games" className={linkClass("games")}>
         Games
+      </Link>
+      <Link href="/admin/leaderboards" className={linkClass("leaderboards")}>
+        Leaderboards
       </Link>
       <Link href="/admin/matches" className={linkClass("matches")}>
         Matches

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import ThemeToggle from "@/components/ThemeToggle";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -26,8 +27,30 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+try {
+  var theme = window.localStorage.getItem("world-cup-roulette-theme");
+  var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  if (theme === "dark" || (!theme && prefersDark)) {
+    document.documentElement.classList.add("dark");
+    document.documentElement.style.colorScheme = "dark";
+  }
+} catch (_) {}
+            `.trim(),
+          }}
+        />
+      </head>
+      <body className="min-h-full flex flex-col">
+        <div className="theme-bar">
+          <ThemeToggle />
+        </div>
+        {children}
+      </body>
     </html>
   );
 }
