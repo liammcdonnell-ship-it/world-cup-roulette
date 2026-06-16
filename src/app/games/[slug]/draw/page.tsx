@@ -44,6 +44,27 @@ type AssignmentRow = {
   draw_round: string;
 };
 
+type PlayerTeamQueryRow = {
+  id: number;
+  player_id: number;
+  team_id: number;
+  draw_round: string;
+  teams:
+    | {
+        id: number;
+        name: string;
+        code: string | null;
+        flag_image_url: string | null;
+      }
+    | {
+        id: number;
+        name: string;
+        code: string | null;
+        flag_image_url: string | null;
+      }[]
+    | null;
+};
+
 const drawLimits: Record<string, number> = {
   initial: 3,
   second: 1,
@@ -254,16 +275,22 @@ export default async function GameDrawPage({
     players.map((player) => [player.id, player.name])
   );
 
-  const assignments = (playerTeamsData ?? []).map((row: any) => ({
-    id: row.id,
-    player_id: row.player_id,
-    player_name: playerNameById.get(row.player_id) ?? "Unknown player",
-    team_id: row.team_id,
-    team_name: row.teams?.name ?? "Unknown team",
-    team_code: row.teams?.code ?? null,
-    flag_image_url: row.teams?.flag_image_url ?? null,
-    draw_round: row.draw_round,
-  })) as AssignmentRow[];
+  const assignments = ((playerTeamsData ?? []) as PlayerTeamQueryRow[]).map(
+    (row) => {
+      const team = Array.isArray(row.teams) ? row.teams[0] : row.teams;
+
+      return {
+        id: row.id,
+        player_id: row.player_id,
+        player_name: playerNameById.get(row.player_id) ?? "Unknown player",
+        team_id: row.team_id,
+        team_name: team?.name ?? "Unknown team",
+        team_code: team?.code ?? null,
+        flag_image_url: team?.flag_image_url ?? null,
+        draw_round: row.draw_round,
+      };
+    }
+  ) as AssignmentRow[];
 
   const selectedPlayer = selectedPlayerId
     ? players.find((player) => player.id === selectedPlayerId)

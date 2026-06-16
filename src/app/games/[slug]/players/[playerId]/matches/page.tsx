@@ -1,3 +1,5 @@
+/* eslint-disable @next/next/no-img-element */
+
 import { notFound } from "next/navigation";
 import GameNav from "@/components/GameNav";
 import { supabase } from "@/lib/supabase";

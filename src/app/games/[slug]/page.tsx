@@ -11,7 +11,6 @@ type GameLeaderboardRow = {
   game_slug: string;
   player_id: number;
   player_name: string;
-  is_paid: boolean;
   total_goals: number;
   status: string;
 };
@@ -25,8 +24,6 @@ type GameLeaderboardTeamRow = {
   flag_image_url: string | null;
   counting_goals: number;
 };
-
-const ENTRY_FEE = 5;
 
 const drawRoundOrder: Record<string, number> = {
   initial: 1,
@@ -101,7 +98,7 @@ export default async function GamePage({
   const { data: leaderboardData, error: leaderboardError } = await supabase
     .from("game_leaderboard")
     .select(
-      "game_id, game_name, game_slug, player_id, player_name, is_paid, total_goals, status"
+      "game_id, game_name, game_slug, player_id, player_name, total_goals, status"
     )
     .eq("game_slug", slug);
 
@@ -205,9 +202,6 @@ export default async function GamePage({
     });
   }
 
-  const paidPlayers = leaderboard.filter((player) => player.is_paid);
-  const prizePot = paidPlayers.length * ENTRY_FEE;
-
   return (
     <main className="min-h-screen p-4 sm:p-8 bg-gray-50">
       <div className="max-w-5xl mx-auto">
@@ -224,16 +218,7 @@ export default async function GamePage({
           further teams are drawn later in the World Cup. Over 21 is bust.
         </p>
 
-        <div className="mb-8 grid gap-4 md:grid-cols-2">
-          <div className="rounded-xl border bg-white shadow-sm p-4">
-            <h2 className="font-bold text-lg mb-1">💷 Prize pot</h2>
-            <p className="text-3xl font-bold">£{prizePot}</p>
-            <p className="text-sm text-gray-600">
-              {paidPlayers.length} paid player
-              {paidPlayers.length === 1 ? "" : "s"} × £{ENTRY_FEE}
-            </p>
-          </div>
-
+        <div className="mb-8">
           <div className="rounded-xl border bg-white shadow-sm p-4">
             <h2 className="font-bold text-lg mb-1">🎲 Pick Teams</h2>
             <p className="text-gray-600 mb-3">
@@ -283,10 +268,7 @@ export default async function GamePage({
                             💩
                           </span>
                         )}
-                        {row.player_name}{" "}
-                        <span title={row.is_paid ? "Paid" : "Not paid"}>
-                          {row.is_paid ? "💰👍" : "💰👎"}
-                        </span>
+                        {row.player_name}
                       </div>
 
                       <div className="mt-2 flex flex-wrap gap-2">
@@ -342,8 +324,8 @@ export default async function GamePage({
         </div>
 
         <p className="mt-4 text-sm text-gray-500">
-          💰👍 = paid. 💰👎 = not paid. The number in brackets is that
-          team&apos;s counting goals for that player.
+          The number in brackets is that team&apos;s counting goals for that
+          player.
         </p>
       </div>
     </main>

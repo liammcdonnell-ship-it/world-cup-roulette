@@ -1,3 +1,5 @@
+/* eslint-disable @next/next/no-img-element */
+
 import { supabase } from "@/lib/supabase";
 import Nav from "@/components/nav";
 

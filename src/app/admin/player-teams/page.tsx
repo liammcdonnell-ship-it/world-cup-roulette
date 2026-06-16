@@ -11,6 +11,19 @@ type PlayerRow = {
   game_name: string;
 };
 
+type PlayerQueryRow = {
+  id: number;
+  name: string;
+  games:
+    | {
+        name: string;
+      }
+    | {
+        name: string;
+      }[]
+    | null;
+};
+
 type TeamRow = {
   id: number;
   name: string;
@@ -31,6 +44,44 @@ type PlayerTeamRow = {
   team_name: string;
   draw_round: string;
   scoring_starts_at: string | null;
+};
+
+type PlayerTeamQueryRow = {
+  id: number;
+  draw_round: string;
+  scoring_starts_at: string | null;
+  players:
+    | {
+        name: string;
+        games:
+          | {
+              name: string;
+            }
+          | {
+              name: string;
+            }[]
+          | null;
+      }
+    | {
+        name: string;
+        games:
+          | {
+              name: string;
+            }
+          | {
+              name: string;
+            }[]
+          | null;
+      }[]
+    | null;
+  teams:
+    | {
+        name: string;
+      }
+    | {
+        name: string;
+      }[]
+    | null;
 };
 
 const fallbackDrawRoundLabels: Record<string, string> = {
@@ -121,11 +172,15 @@ export default async function AdminPlayerTeamsPage() {
     )
     .order("id", { ascending: true });
 
-  const players = (playersData ?? []).map((row: any) => ({
-    id: row.id,
-    name: row.name,
-    game_name: row.games?.name ?? "Unknown game",
-  })) as PlayerRow[];
+  const players = ((playersData ?? []) as PlayerQueryRow[]).map((row) => {
+    const game = Array.isArray(row.games) ? row.games[0] : row.games;
+
+    return {
+      id: row.id,
+      name: row.name,
+      game_name: game?.name ?? "Unknown game",
+    };
+  }) as PlayerRow[];
 
   const teams = (teamsData ?? []) as TeamRow[];
   const drawRounds = (drawRoundsData ?? []) as DrawRoundSetting[];
@@ -138,14 +193,24 @@ export default async function AdminPlayerTeamsPage() {
     { ...fallbackDrawRoundLabels }
   );
 
-  const playerTeams = (playerTeamsData ?? []).map((row: any) => ({
-    id: row.id,
-    player_name: row.players?.name ?? "Unknown player",
-    game_name: row.players?.games?.name ?? "Unknown game",
-    team_name: row.teams?.name ?? "Unknown team",
-    draw_round: row.draw_round,
-    scoring_starts_at: row.scoring_starts_at,
-  })) as PlayerTeamRow[];
+  const playerTeams = (
+    (playerTeamsData ?? []) as PlayerTeamQueryRow[]
+  ).map((row) => {
+    const player = Array.isArray(row.players) ? row.players[0] : row.players;
+    const game = Array.isArray(player?.games)
+      ? player?.games[0]
+      : player?.games;
+    const team = Array.isArray(row.teams) ? row.teams[0] : row.teams;
+
+    return {
+      id: row.id,
+      player_name: player?.name ?? "Unknown player",
+      game_name: game?.name ?? "Unknown game",
+      team_name: team?.name ?? "Unknown team",
+      draw_round: row.draw_round,
+      scoring_starts_at: row.scoring_starts_at,
+    };
+  }) as PlayerTeamRow[];
 
   return (
     <main className="min-h-screen p-8 bg-gray-50">

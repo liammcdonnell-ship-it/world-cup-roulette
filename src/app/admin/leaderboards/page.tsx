@@ -1,3 +1,5 @@
+/* eslint-disable @next/next/no-img-element */
+
 import Link from "next/link";
 import Nav from "@/components/nav";
 import AdminNav from "@/components/AdminNav";
@@ -9,9 +11,24 @@ type LeaderboardRow = {
   game_slug: string;
   player_id: number;
   player_name: string;
-  is_paid: boolean;
   total_goals: number;
   status: string;
+};
+
+type LeaderboardTeamRow = {
+  player_id: number;
+  player_team_id: number;
+  draw_round: string;
+  team_name: string;
+  team_code: string | null;
+  flag_image_url: string | null;
+  counting_goals: number;
+};
+
+const drawRoundOrder: Record<string, number> = {
+  initial: 1,
+  second: 2,
+  third: 3,
 };
 
 function getDisplayStatus(totalGoals: number) {
@@ -40,28 +57,11 @@ function getRowClass(totalGoals: number) {
 
 function sortLeaderboard(rows: LeaderboardRow[]) {
   return [...rows].sort((a, b) => {
-    const gameCompare = a.game_name.localeCompare(b.game_name);
-
-    if (gameCompare !== 0) {
-      return gameCompare;
+    if (b.total_goals !== a.total_goals) {
+      return b.total_goals - a.total_goals;
     }
 
-    const aGoals = a.total_goals;
-    const bGoals = b.total_goals;
-    const aBust = aGoals > 21;
-    const bBust = bGoals > 21;
-
-    if (aGoals === 21 && bGoals !== 21) return -1;
-    if (bGoals === 21 && aGoals !== 21) return 1;
-
-    if (!aBust && bBust) return -1;
-    if (aBust && !bBust) return 1;
-
-    if (!aBust && !bBust) {
-      return bGoals - aGoals;
-    }
-
-    return aGoals - bGoals;
+    return a.player_name.localeCompare(b.player_name);
   });
 }
 
@@ -88,16 +88,22 @@ export default async function AdminLeaderboardsPage() {
   const { data, error } = await supabase
     .from("game_leaderboard")
     .select(
-      "game_id, game_name, game_slug, player_id, player_name, is_paid, total_goals, status"
+      "game_id, game_name, game_slug, player_id, player_name, total_goals, status"
     );
 
-  if (error) {
+  const { data: teamsData, error: teamsError } = await supabase
+    .from("game_leaderboard_teams")
+    .select(
+      "player_id, player_team_id, draw_round, team_name, team_code, flag_image_url, counting_goals"
+    );
+
+  if (error || teamsError) {
     return (
       <main className="min-h-screen p-8">
         <h1 className="mb-4 text-3xl font-bold">Admin: Leaderboards</h1>
         <p className="text-red-600">Error loading leaderboards.</p>
         <pre className="mt-4 overflow-x-auto rounded bg-gray-100 p-4">
-          {error.message}
+          {error?.message ?? teamsError?.message}
         </pre>
       </main>
     );
@@ -105,6 +111,28 @@ export default async function AdminLeaderboardsPage() {
 
   const leaderboards = sortLeaderboard((data ?? []) as LeaderboardRow[]);
   const gameRanks = getGameRanks((data ?? []) as LeaderboardRow[]);
+  const leaderboardTeams = (teamsData ?? []) as LeaderboardTeamRow[];
+  const teamsByPlayer = new Map<number, LeaderboardTeamRow[]>();
+
+  for (const team of leaderboardTeams) {
+    const existingTeams = teamsByPlayer.get(team.player_id) ?? [];
+    existingTeams.push(team);
+    teamsByPlayer.set(team.player_id, existingTeams);
+  }
+
+  for (const teams of teamsByPlayer.values()) {
+    teams.sort((a, b) => {
+      const roundDifference =
+        (drawRoundOrder[a.draw_round] ?? 99) -
+        (drawRoundOrder[b.draw_round] ?? 99);
+
+      if (roundDifference !== 0) {
+        return roundDifference;
+      }
+
+      return a.team_name.localeCompare(b.team_name);
+    });
+  }
 
   return (
     <main className="min-h-screen bg-gray-50 p-4 sm:p-8">
@@ -121,55 +149,85 @@ export default async function AdminLeaderboardsPage() {
         </p>
 
         <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">
-          <table className="w-full min-w-[860px] text-left">
+          <table className="w-full min-w-[1040px] text-left">
             <thead className="bg-gray-100">
               <tr>
                 <th className="p-4">Game</th>
                 <th className="p-4">Rank</th>
                 <th className="p-4">Player</th>
+                <th className="p-4">Teams</th>
                 <th className="p-4 text-right">Goals</th>
                 <th className="p-4">Status</th>
-                <th className="p-4">Paid</th>
                 <th className="p-4">Links</th>
               </tr>
             </thead>
             <tbody>
-              {leaderboards.map((row) => (
-                <tr
-                  key={`${row.game_id}-${row.player_id}`}
-                  className={getRowClass(row.total_goals)}
-                >
-                  <td className="p-4 font-semibold">
-                    <Link
-                      href={`/games/${row.game_slug}`}
-                      className="underline"
-                    >
-                      {row.game_name}
-                    </Link>
-                  </td>
-                  <td className="p-4 text-gray-600">
-                    {gameRanks.get(row.player_id) ?? "-"}
-                  </td>
-                  <td className="p-4 font-semibold">{row.player_name}</td>
-                  <td className="p-4 text-right text-lg font-bold">
-                    {row.total_goals}
-                  </td>
-                  <td className="p-4 text-gray-600">
-                    {getDisplayStatus(row.total_goals)}
-                  </td>
-                  <td className="p-4 text-gray-600">
-                    {row.is_paid ? "Paid" : "Not paid"}
-                  </td>
-                  <td className="p-4">
-                    <Link
-                      href={`/games/${row.game_slug}/players/${row.player_id}/matches`}
-                      className="rounded-lg border bg-gray-100 px-3 py-2 text-sm font-semibold underline hover:bg-gray-200"
-                    >
-                      Matches
-                    </Link>
-                  </td>
-                </tr>
-              ))}
+              {leaderboards.map((row) => {
+                const playerTeams = teamsByPlayer.get(row.player_id) ?? [];
+
+                return (
+                  <tr
+                    key={`${row.game_id}-${row.player_id}`}
+                    className={getRowClass(row.total_goals)}
+                  >
+                    <td className="p-4 font-semibold">
+                      <Link
+                        href={`/games/${row.game_slug}`}
+                        className="underline"
+                      >
+                        {row.game_name}
+                      </Link>
+                    </td>
+                    <td className="p-4 text-gray-600">
+                      {gameRanks.get(row.player_id) ?? "-"}
+                    </td>
+                    <td className="p-4 font-semibold">{row.player_name}</td>
+                    <td className="p-4">
+                      <div className="flex flex-wrap gap-2">
+                        {playerTeams.length > 0 ? (
+                          playerTeams.map((team) => (
+                            <span
+                              key={team.player_team_id}
+                              className="inline-flex items-center gap-1 rounded-full border bg-white px-2 py-1 text-xs font-medium text-gray-700"
+                            >
+                              {team.flag_image_url && (
+                                <img
+                                  src={team.flag_image_url}
+                                  alt=""
+                                  className="h-3 w-4 rounded-sm object-cover"
+                                />
+                              )}
+                              <span>
+                                {team.team_name}
+                                {team.team_code ? ` (${team.team_code})` : ""}{" "}
+                                - {team.counting_goals}
+                              </span>
+                            </span>
+                          ))
+                        ) : (
+                          <span className="text-sm text-gray-500">
+                            No teams drawn yet
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="p-4 text-right text-lg font-bold">
+                      {row.total_goals}
+                    </td>
+                    <td className="p-4 text-gray-600">
+                      {getDisplayStatus(row.total_goals)}
+                    </td>
+                    <td className="p-4">
+                      <Link
+                        href={`/games/${row.game_slug}/players/${row.player_id}/matches`}
+                        className="rounded-lg border bg-gray-100 px-3 py-2 text-sm font-semibold underline hover:bg-gray-200"
+                      >
+                        Matches
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })}
 
               {leaderboards.length === 0 && (
                 <tr>
