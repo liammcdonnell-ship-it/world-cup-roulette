@@ -12,6 +12,62 @@
     {
       "path": "/api/sync-scores",
       "schedule": "0 6 * * *"
+    },
+    {
+      "path": "/api/sync-scores/finish-window",
+      "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/sync-scores/finish-window",
+      "schedule": "0 16 * * *"
+    },
+    {
+      "path": "/api/sync-scores/finish-window",
+      "schedule": "0 17 * * *"
+    },
+    {
+      "path": "/api/sync-scores/finish-window",
+      "schedule": "0 18 * * *"
+    },
+    {
+      "path": "/api/sync-scores/finish-window",
+      "schedule": "0 19 * * *"
+    },
+    {
+      "path": "/api/sync-scores/finish-window",
+      "schedule": "0 20 * * *"
+    },
+    {
+      "path": "/api/sync-scores/finish-window",
+      "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/sync-scores/finish-window",
+      "schedule": "0 22 * * *"
+    },
+    {
+      "path": "/api/sync-scores/finish-window",
+      "schedule": "0 23 * * *"
+    },
+    {
+      "path": "/api/sync-scores/finish-window",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/sync-scores/finish-window",
+      "schedule": "0 1 * * *"
+    },
+    {
+      "path": "/api/sync-scores/finish-window",
+      "schedule": "0 2 * * *"
+    },
+    {
+      "path": "/api/sync-scores/finish-window",
+      "schedule": "0 3 * * *"
+    },
+    {
+      "path": "/api/sync-scores/finish-window",
+      "schedule": "0 4 * * *"
     }
   ]
 }
