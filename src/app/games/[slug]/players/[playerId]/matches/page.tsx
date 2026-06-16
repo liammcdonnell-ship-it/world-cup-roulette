@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import GameNav from "@/components/GameNav";
 import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
+import { getTeamEliminationMap } from "@/lib/teamStatus";
 
 type GameRow = {
   id: number;
@@ -13,6 +14,10 @@ type PlayerRow = {
   id: number;
   name: string;
   game_id: number;
+};
+
+type LeaderboardRow = {
+  total_goals: number;
 };
 
 type PlayerTeamRow = {
@@ -173,6 +178,16 @@ export default async function PlayerMatchesPage({
     return aTime - bTime;
   });
 
+  const { data: leaderboardData } = await supabase
+    .from("game_leaderboard")
+    .select("total_goals")
+    .eq("game_slug", slug)
+    .eq("player_id", player.id)
+    .single();
+
+  const leaderboard = leaderboardData as LeaderboardRow | null;
+  const teamEliminatedById = await getTeamEliminationMap();
+
   return (
     <main className="min-h-screen p-4 sm:p-8 bg-gray-50">
       <div className="max-w-5xl mx-auto">
@@ -184,6 +199,10 @@ export default async function PlayerMatchesPage({
 
         <p className="mb-2 text-gray-600">
           Game: <span className="font-semibold">{game.name}</span>
+        </p>
+
+        <p className="mb-4 text-lg font-semibold text-gray-900">
+          Current total: {leaderboard?.total_goals ?? 0} goals
         </p>
 
         <p className="mb-8 text-gray-600">
@@ -198,6 +217,9 @@ export default async function PlayerMatchesPage({
                     name={assignment.teams.name}
                     code={assignment.teams.code}
                     flagUrl={assignment.teams.flag_image_url}
+                    isEliminated={
+                      teamEliminatedById.get(assignment.teams.id) ?? false
+                    }
                   />
                 ) : null
               )}
@@ -232,6 +254,9 @@ export default async function PlayerMatchesPage({
                         name={match.home_team_name}
                         code={match.home_team_code}
                         flagUrl={match.home_flag_image_url}
+                        isEliminated={
+                          teamEliminatedById.get(match.home_team_id) ?? false
+                        }
                       />
 
                       <span className="text-gray-500">v</span>
@@ -241,6 +266,9 @@ export default async function PlayerMatchesPage({
                         name={match.away_team_name}
                         code={match.away_team_code}
                         flagUrl={match.away_flag_image_url}
+                        isEliminated={
+                          teamEliminatedById.get(match.away_team_id) ?? false
+                        }
                       />
                     </span>
                   </td>

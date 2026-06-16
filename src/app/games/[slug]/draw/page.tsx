@@ -40,6 +40,7 @@ type AssignmentRow = {
   team_name: string;
   team_code: string | null;
   flag_image_url: string | null;
+  is_eliminated: boolean;
   draw_round: string;
 };
 
@@ -54,12 +55,14 @@ type PlayerTeamQueryRow = {
         name: string;
         code: string | null;
         flag_image_url: string | null;
+        is_eliminated: boolean;
       }
     | {
         id: number;
         name: string;
         code: string | null;
         flag_image_url: string | null;
+        is_eliminated: boolean;
       }[]
     | null;
 };
@@ -263,7 +266,7 @@ export default async function GameDrawPage({
             player_id,
             team_id,
             draw_round,
-            teams(id, name, code, flag_image_url)
+            teams(id, name, code, flag_image_url, is_eliminated)
           `
           )
           .in("player_id", playerIds)
@@ -286,6 +289,7 @@ export default async function GameDrawPage({
         team_name: team?.name ?? "Unknown team",
         team_code: team?.code ?? null,
         flag_image_url: team?.flag_image_url ?? null,
+        is_eliminated: team?.is_eliminated ?? false,
         draw_round: row.draw_round,
       };
     }
@@ -487,6 +491,7 @@ export default async function GameDrawPage({
                           name={assignment.team_name}
                           code={assignment.team_code}
                           flagUrl={assignment.flag_image_url}
+                          isEliminated={assignment.is_eliminated}
                         />
                       </td>
                     </tr>
@@ -528,6 +533,7 @@ export default async function GameDrawPage({
                       name={assignment.team_name}
                       code={assignment.team_code}
                       flagUrl={assignment.flag_image_url}
+                      isEliminated={assignment.is_eliminated}
                     />
                   </td>
                   <td className="p-4 text-gray-600">

@@ -5,6 +5,7 @@ import Nav from "@/components/nav";
 import AdminNav from "@/components/AdminNav";
 import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
+import { getTeamEliminationMap } from "@/lib/teamStatus";
 
 type LeaderboardRow = {
   game_id: number;
@@ -114,6 +115,7 @@ export default async function AdminLeaderboardsPage() {
   const leaderboards = sortLeaderboard((data ?? []) as LeaderboardRow[]);
   const gameRanks = getGameRanks((data ?? []) as LeaderboardRow[]);
   const leaderboardTeams = (teamsData ?? []) as LeaderboardTeamRow[];
+  const teamEliminatedById = await getTeamEliminationMap();
   const teamsByPlayer = new Map<number, LeaderboardTeamRow[]>();
 
   for (const team of leaderboardTeams) {
@@ -206,6 +208,9 @@ export default async function AdminLeaderboardsPage() {
                                 flagUrl={null}
                                 imageClassName="hidden"
                                 className="gap-0"
+                                isEliminated={
+                                  teamEliminatedById.get(team.team_id) ?? false
+                                }
                               />
                               <span>- {team.counting_goals}</span>
                             </span>

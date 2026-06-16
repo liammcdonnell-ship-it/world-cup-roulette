@@ -45,6 +45,7 @@ type PlayerTeamRow = {
   team_id: number;
   team_name: string;
   team_code: string | null;
+  is_eliminated: boolean;
   draw_round: string;
   scoring_starts_at: string | null;
 };
@@ -82,11 +83,13 @@ type PlayerTeamQueryRow = {
         id: number;
         name: string;
         code: string | null;
+        is_eliminated: boolean;
       }
     | {
         id: number;
         name: string;
         code: string | null;
+        is_eliminated: boolean;
       }[]
     | null;
 };
@@ -174,7 +177,7 @@ export default async function AdminPlayerTeamsPage() {
       draw_round,
       scoring_starts_at,
       players(name, games(name)),
-      teams(id, name, code)
+      teams(id, name, code, is_eliminated)
     `
     )
     .order("id", { ascending: true });
@@ -216,6 +219,7 @@ export default async function AdminPlayerTeamsPage() {
       team_id: team?.id ?? 0,
       team_name: team?.name ?? "Unknown team",
       team_code: team?.code ?? null,
+      is_eliminated: team?.is_eliminated ?? false,
       draw_round: row.draw_round,
       scoring_starts_at: row.scoring_starts_at,
     };
@@ -324,6 +328,7 @@ export default async function AdminPlayerTeamsPage() {
                         teamId={assignment.team_id}
                         name={assignment.team_name}
                         code={assignment.team_code}
+                        isEliminated={assignment.is_eliminated}
                       />
                     ) : (
                       assignment.team_name

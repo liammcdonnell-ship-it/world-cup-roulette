@@ -227,6 +227,7 @@ export default async function AdminTeamsPage({
                       name={team.name}
                       code={team.code}
                       showCode={false}
+                      isEliminated={team.is_eliminated}
                     />
                   </td>
                   <td className="p-4 text-gray-600">{team.code}</td>

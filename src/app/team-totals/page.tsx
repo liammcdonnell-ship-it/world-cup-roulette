@@ -1,6 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import Nav from "@/components/nav";
 import TeamLink from "@/components/TeamLink";
+import { getTeamEliminationMap } from "@/lib/teamStatus";
 
 type TeamTotalRow = {
   team_id: number;
@@ -28,6 +29,7 @@ export default async function TeamTotalsPage() {
   }
 
   const teams = (data ?? []) as TeamTotalRow[];
+  const teamEliminatedById = await getTeamEliminationMap();
 
   return (
     <main className="min-h-screen p-4 sm:p-8 bg-gray-50">
@@ -58,6 +60,7 @@ export default async function TeamTotalsPage() {
                       code={team.code}
                       flagUrl={team.flag_image_url}
                       showCode={false}
+                      isEliminated={teamEliminatedById.get(team.team_id) ?? false}
                     />
                   </td>
                   <td className="p-4 text-gray-600">{team.code}</td>

@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import GameNav from "@/components/GameNav";
+import ShareLeaderboardButton from "@/components/ShareLeaderboardButton";
 import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
+import { getTeamEliminationMap } from "@/lib/teamStatus";
 
 type GameLeaderboardRow = {
   game_id: number;
@@ -26,6 +28,12 @@ type GameLeaderboardTeamRow = {
   flag_image_url: string | null;
   counting_goals: number;
 };
+
+type DrawRoundSettingRow = {
+  is_open: boolean;
+};
+
+const ENTRY_FEE = 5;
 
 const drawRoundOrder: Record<string, number> = {
   initial: 1,
@@ -69,6 +77,18 @@ function getStatusBadgeClass(totalGoals: number) {
   return "inline-flex rounded-full border border-gray-200 bg-gray-100 px-2 py-1 text-xs font-semibold text-gray-700";
 }
 
+function getPlainDisplayStatus(totalGoals: number) {
+  if (totalGoals === 21) {
+    return "Perfect 21";
+  }
+
+  if (totalGoals > 21) {
+    return "Bust";
+  }
+
+  return `${21 - totalGoals} to go`;
+}
+
 function sortLeaderboard(rows: GameLeaderboardRow[]) {
   return [...rows].sort((a, b) => {
     const aGoals = a.total_goals;
@@ -90,12 +110,47 @@ function sortLeaderboard(rows: GameLeaderboardRow[]) {
   });
 }
 
+function RoundOf32Announcement({ gameSlug }: { gameSlug: string }) {
+  return (
+    <div className="mb-8 rounded-lg border-2 border-amber-300 bg-amber-50 p-4 shadow-sm sm:p-5">
+      <h2 className="mb-2 text-xl font-bold text-amber-950">
+        Round of 32 draw is open
+      </h2>
+      <p className="mb-3 text-sm leading-6 text-amber-950 sm:text-base">
+        You may now draw a fourth team if you wish. This is optional: you do
+        not have to take another team now. You have until the first Round of 32
+        match to decide.
+      </p>
+      <p className="mb-4 text-sm leading-6 text-amber-950 sm:text-base">
+        The larger World Cup format adds an extra round of games, so think
+        carefully before drawing your fourth team. You will still get one more
+        chance to draw a single team later, whether or not you draw one now.
+      </p>
+      <Link
+        href={`/games/${gameSlug}/draw`}
+        className="inline-flex rounded-lg border border-amber-400 bg-white px-4 py-3 text-sm font-bold text-amber-950 underline hover:bg-amber-100"
+      >
+        Go to pick teams page
+      </Link>
+    </div>
+  );
+}
+
 export default async function GamePage({
   params,
 }: {
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
+
+  const { data: roundOf32Data } = await supabase
+    .from("draw_round_settings")
+    .select("is_open")
+    .eq("draw_round", "second")
+    .single();
+
+  const roundOf32DrawIsOpen =
+    ((roundOf32Data as DrawRoundSettingRow | null)?.is_open ?? false) === true;
 
   const { data: leaderboardData, error: leaderboardError } = await supabase
     .from("game_leaderboard")
@@ -147,6 +202,8 @@ export default async function GamePage({
             further teams are drawn later in the World Cup. Over 21 is bust.
           </p>
 
+          {roundOf32DrawIsOpen && <RoundOf32Announcement gameSlug={slug} />}
+
           <div className="rounded-xl border bg-white shadow-sm p-6">
             <h2 className="text-2xl font-bold mb-2">No players yet</h2>
             <p className="text-gray-600">
@@ -160,6 +217,7 @@ export default async function GamePage({
 
   const gameName = leaderboard[0].game_name;
   const gameSlug = leaderboard[0].game_slug;
+  const prizePot = leaderboard.length * ENTRY_FEE;
 
   const { data: teamsData, error: teamsError } = await supabase
     .from("game_leaderboard_teams")
@@ -181,6 +239,7 @@ export default async function GamePage({
   }
 
   const leaderboardTeams = (teamsData ?? []) as GameLeaderboardTeamRow[];
+  const teamEliminatedById = await getTeamEliminationMap();
 
   const teamsByPlayer = new Map<number, GameLeaderboardTeamRow[]>();
 
@@ -204,6 +263,18 @@ export default async function GamePage({
     });
   }
 
+  const shareRows = leaderboard.map((row, index) => ({
+    rank: index + 1,
+    playerName: row.player_name,
+    totalGoals: row.total_goals,
+    status: getPlainDisplayStatus(row.total_goals),
+    teams: (teamsByPlayer.get(row.player_id) ?? []).map((team) => ({
+      name: team.team_name,
+      goals: team.counting_goals,
+      isEliminated: teamEliminatedById.get(team.team_id) ?? false,
+    })),
+  }));
+
   return (
     <main className="min-h-screen p-4 sm:p-8 bg-gray-50">
       <div className="max-w-5xl mx-auto">
@@ -220,7 +291,18 @@ export default async function GamePage({
           further teams are drawn later in the World Cup. Over 21 is bust.
         </p>
 
-        <div className="mb-8">
+        {roundOf32DrawIsOpen && <RoundOf32Announcement gameSlug={gameSlug} />}
+
+        <div className="mb-8 grid gap-4 md:grid-cols-2">
+          <div className="rounded-xl border bg-white shadow-sm p-4">
+            <h2 className="font-bold text-lg mb-1">Prize pot</h2>
+            <p className="text-3xl font-bold">£{prizePot}</p>
+            <p className="text-sm text-gray-600">
+              {leaderboard.length} player{leaderboard.length === 1 ? "" : "s"} ×
+              £{ENTRY_FEE}
+            </p>
+          </div>
+
           <div className="rounded-xl border bg-white shadow-sm p-4">
             <h2 className="font-bold text-lg mb-1">🎲 Pick Teams</h2>
             <p className="text-gray-600 mb-3">
@@ -230,6 +312,14 @@ export default async function GamePage({
               Go to pick teams page
             </Link>
           </div>
+        </div>
+
+        <div className="mb-6 flex justify-end">
+          <ShareLeaderboardButton
+            gameName={gameName}
+            prizePot={prizePot}
+            rows={shareRows}
+          />
         </div>
 
         <div className="overflow-hidden rounded-xl border bg-white shadow-sm">
@@ -295,6 +385,9 @@ export default async function GamePage({
                                 flagUrl={null}
                                 imageClassName="hidden"
                                 className="gap-0"
+                                isEliminated={
+                                  teamEliminatedById.get(team.team_id) ?? false
+                                }
                               />
                               <span>({team.counting_goals})</span>
                             </span>

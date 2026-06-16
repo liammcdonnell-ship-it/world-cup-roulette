@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import Nav from "@/components/nav";
 import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
+import { getTeamEliminationMap } from "@/lib/teamStatus";
 
 type TeamRow = {
   id: number;
@@ -141,6 +142,7 @@ export default async function TeamFixturesPage({
 
     return aTime - bTime;
   });
+  const teamEliminatedById = await getTeamEliminationMap();
 
   const drawnPlayers = ((drawnPlayersData ?? []) as DrawnPlayerRow[])
     .map((row) => {
@@ -189,7 +191,11 @@ export default async function TeamFixturesPage({
             />
           )}
           <div>
-            <h1 className="text-3xl font-bold sm:text-4xl">
+            <h1
+              className={`text-3xl font-bold sm:text-4xl ${
+                team.is_eliminated ? "text-red-700" : ""
+              }`}
+            >
               {team.name} Fixtures
             </h1>
             <p className="text-gray-600">
@@ -222,6 +228,9 @@ export default async function TeamFixturesPage({
                         name={match.home_team_name}
                         code={match.home_team_code}
                         flagUrl={match.home_flag_image_url}
+                        isEliminated={
+                          teamEliminatedById.get(match.home_team_id) ?? false
+                        }
                       />
                       <span className="text-gray-500">v</span>
                       <TeamLink
@@ -229,6 +238,9 @@ export default async function TeamFixturesPage({
                         name={match.away_team_name}
                         code={match.away_team_code}
                         flagUrl={match.away_flag_image_url}
+                        isEliminated={
+                          teamEliminatedById.get(match.away_team_id) ?? false
+                        }
                       />
                     </span>
                   </td>

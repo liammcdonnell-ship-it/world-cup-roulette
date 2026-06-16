@@ -6,6 +6,7 @@ type NavProps = {
     | "games"
     | "team-totals"
     | "matches"
+    | "patch-notes"
     | "rules"
     | "draw"
     | "admin";
@@ -28,6 +29,9 @@ export default function Nav({ activePage }: NavProps) {
       </Link>
       <Link href="/rules" className={linkClass("rules")}>
         Rules
+      </Link>
+      <Link href="/patch-notes" className={linkClass("patch-notes")}>
+        Patch Notes
       </Link>
       <Link href="/admin/games" className={linkClass("admin")}>
         Admin

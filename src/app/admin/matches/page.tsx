@@ -7,6 +7,7 @@ import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { syncScoresFromFootballData } from "@/lib/syncScores";
+import { getTeamEliminationMap } from "@/lib/teamStatus";
 
 type TeamRow = {
   id: number;
@@ -151,6 +152,7 @@ export default async function AdminMatchesPage({
 
   const teams = (teamsData ?? []) as TeamRow[];
   const matches = (matchesData ?? []) as MatchRow[];
+  const teamEliminatedById = await getTeamEliminationMap();
 
   return (
     <main className="min-h-screen p-8 bg-gray-50">
@@ -303,12 +305,18 @@ export default async function AdminMatchesPage({
                         teamId={match.home_team_id}
                         name={match.home_team_name}
                         code={match.home_team_code}
+                        isEliminated={
+                          teamEliminatedById.get(match.home_team_id) ?? false
+                        }
                       />
                       <span className="text-gray-500">v</span>
                       <TeamLink
                         teamId={match.away_team_id}
                         name={match.away_team_name}
                         code={match.away_team_code}
+                        isEliminated={
+                          teamEliminatedById.get(match.away_team_id) ?? false
+                        }
                       />
                     </span>
                   </td>

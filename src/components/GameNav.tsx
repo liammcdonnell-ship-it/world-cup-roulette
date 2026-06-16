@@ -50,6 +50,10 @@ export default async function GameNav({ slug, activePage }: GameNavProps) {
           Rules
         </Link>
 
+        <Link href="/patch-notes" className="underline">
+          Patch Notes
+        </Link>
+
         <Link href="/admin/games" className="underline">
           Admin
         </Link>

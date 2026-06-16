@@ -8,6 +8,7 @@ type TeamLinkProps = {
   code?: string | null;
   flagUrl?: string | null;
   showCode?: boolean;
+  isEliminated?: boolean;
   className?: string;
   imageClassName?: string;
 };
@@ -17,14 +18,19 @@ export default function TeamLink({
   name,
   code,
   flagUrl,
-  showCode = true,
+  showCode = false,
+  isEliminated = false,
   className = "",
   imageClassName = "h-4 w-6",
 }: TeamLinkProps) {
+  const eliminatedClass = isEliminated
+    ? "font-semibold text-red-700 decoration-red-300 hover:decoration-red-700"
+    : "decoration-gray-300 hover:decoration-gray-900";
+
   return (
     <Link
       href={`/teams/${teamId}`}
-      className={`inline-flex items-center gap-2 underline decoration-gray-300 underline-offset-2 hover:decoration-gray-900 ${className}`}
+      className={`inline-flex items-center gap-2 underline underline-offset-2 ${eliminatedClass} ${className}`}
     >
       {flagUrl ? (
         <img

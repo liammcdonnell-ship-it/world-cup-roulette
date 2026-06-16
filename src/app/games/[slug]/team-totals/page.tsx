@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import GameNav from "@/components/GameNav";
 import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
+import { getTeamEliminationMap } from "@/lib/teamStatus";
 
 type GameRow = {
   id: number;
@@ -53,6 +54,7 @@ export default async function GameTeamTotalsPage({
   }
 
   const teams = (data ?? []) as TeamTotalRow[];
+  const teamEliminatedById = await getTeamEliminationMap();
 
   return (
     <main className="min-h-screen p-4 sm:p-8 bg-gray-50">
@@ -86,6 +88,7 @@ export default async function GameTeamTotalsPage({
                       code={team.code}
                       flagUrl={team.flag_image_url}
                       showCode={false}
+                      isEliminated={teamEliminatedById.get(team.team_id) ?? false}
                     />
                   </td>
                   <td className="p-4 text-gray-600">{team.code}</td>
