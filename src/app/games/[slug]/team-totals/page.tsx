@@ -1,7 +1,6 @@
-/* eslint-disable @next/next/no-img-element */
-
 import { notFound } from "next/navigation";
 import GameNav from "@/components/GameNav";
+import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
 
 type GameRow = {
@@ -81,19 +80,13 @@ export default async function GameTeamTotalsPage({
               {teams.map((team) => (
                 <tr key={team.team_id} className="border-t">
                   <td className="p-4 font-semibold">
-                    <span className="inline-flex items-center gap-2">
-                      {team.flag_image_url ? (
-                        <img
-                          src={team.flag_image_url}
-                          alt={`${team.team_name} flag`}
-                          className="h-4 w-6 rounded-sm object-cover"
-                        />
-                      ) : (
-                        <span className="inline-block h-4 w-6 rounded-sm bg-gray-200" />
-                      )}
-
-                      <span>{team.team_name}</span>
-                    </span>
+                    <TeamLink
+                      teamId={team.team_id}
+                      name={team.team_name}
+                      code={team.code}
+                      flagUrl={team.flag_image_url}
+                      showCode={false}
+                    />
                   </td>
                   <td className="p-4 text-gray-600">{team.code}</td>
                   <td className="p-4">{team.total_goals}</td>

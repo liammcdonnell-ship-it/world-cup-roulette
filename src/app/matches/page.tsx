@@ -1,13 +1,14 @@
-/* eslint-disable @next/next/no-img-element */
-
 import { supabase } from "@/lib/supabase";
 import Nav from "@/components/nav";
+import TeamLink from "@/components/TeamLink";
 
 type MatchDisplayRow = {
   id: number;
+  home_team_id: number;
   home_team_name: string;
   home_team_code: string | null;
   home_flag_image_url: string | null;
+  away_team_id: number;
   away_team_name: string;
   away_team_code: string | null;
   away_flag_image_url: string | null;
@@ -17,40 +18,11 @@ type MatchDisplayRow = {
   kickoff_time: string | null;
 };
 
-function TeamNameWithFlag({
-  name,
-  code,
-  flagUrl,
-}: {
-  name: string;
-  code: string | null;
-  flagUrl: string | null;
-}) {
-  return (
-    <span className="inline-flex items-center gap-2">
-      {flagUrl ? (
-        <img
-          src={flagUrl}
-          alt={`${name} flag`}
-          className="h-4 w-6 rounded-sm object-cover"
-        />
-      ) : (
-        <span className="inline-block h-4 w-6 rounded-sm bg-gray-200" />
-      )}
-
-      <span>
-        {name}
-        {code ? ` (${code})` : ""}
-      </span>
-    </span>
-  );
-}
-
 export default async function MatchesPage() {
   const { data, error } = await supabase
     .from("matches_display")
     .select(
-      "id, home_team_name, home_team_code, home_flag_image_url, away_team_name, away_team_code, away_flag_image_url, home_goals, away_goals, status, kickoff_time"
+      "id, home_team_id, home_team_name, home_team_code, home_flag_image_url, away_team_id, away_team_name, away_team_code, away_flag_image_url, home_goals, away_goals, status, kickoff_time"
     );
 
   if (error) {
@@ -92,7 +64,8 @@ export default async function MatchesPage() {
                 <tr key={match.id} className="border-t">
                   <td className="p-4 font-semibold">
                     <span className="inline-flex flex-wrap items-center gap-2">
-                      <TeamNameWithFlag
+                      <TeamLink
+                        teamId={match.home_team_id}
                         name={match.home_team_name}
                         code={match.home_team_code}
                         flagUrl={match.home_flag_image_url}
@@ -100,7 +73,8 @@ export default async function MatchesPage() {
 
                       <span className="text-gray-500">v</span>
 
-                      <TeamNameWithFlag
+                      <TeamLink
+                        teamId={match.away_team_id}
                         name={match.away_team_name}
                         code={match.away_team_code}
                         flagUrl={match.away_flag_image_url}

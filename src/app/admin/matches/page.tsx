@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Nav from "@/components/nav";
 import AdminNav from "@/components/AdminNav";
 import AdminGameLinks from "@/components/AdminGameLinks";
+import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { syncScoresFromFootballData } from "@/lib/syncScores";
@@ -15,8 +16,10 @@ type TeamRow = {
 
 type MatchRow = {
   id: number;
+  home_team_id: number;
   home_team_name: string;
   home_team_code: string | null;
+  away_team_id: number;
   away_team_name: string;
   away_team_code: string | null;
   home_goals: number | null;
@@ -131,7 +134,7 @@ export default async function AdminMatchesPage({
   const { data: matchesData, error: matchesError } = await supabase
     .from("matches_display")
     .select(
-      "id, home_team_name, home_team_code, away_team_name, away_team_code, home_goals, away_goals, status"
+      "id, home_team_id, home_team_name, home_team_code, away_team_id, away_team_name, away_team_code, home_goals, away_goals, status"
     );
 
   if (teamsError || matchesError) {
@@ -295,14 +298,19 @@ export default async function AdminMatchesPage({
               {matches.map((match) => (
                 <tr key={match.id} className="border-t">
                   <td className="p-4 font-semibold">
-                    {match.home_team_name}
-                    {match.home_team_code
-                      ? ` (${match.home_team_code})`
-                      : ""}{" "}
-                    v {match.away_team_name}
-                    {match.away_team_code
-                      ? ` (${match.away_team_code})`
-                      : ""}
+                    <span className="inline-flex flex-wrap items-center gap-2">
+                      <TeamLink
+                        teamId={match.home_team_id}
+                        name={match.home_team_name}
+                        code={match.home_team_code}
+                      />
+                      <span className="text-gray-500">v</span>
+                      <TeamLink
+                        teamId={match.away_team_id}
+                        name={match.away_team_name}
+                        code={match.away_team_code}
+                      />
+                    </span>
                   </td>
                   <td className="p-4">
                     {match.home_goals ?? "-"} - {match.away_goals ?? "-"}

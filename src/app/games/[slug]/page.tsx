@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import GameNav from "@/components/GameNav";
+import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
 
 type GameLeaderboardRow = {
@@ -18,6 +19,7 @@ type GameLeaderboardRow = {
 type GameLeaderboardTeamRow = {
   player_id: number;
   player_team_id: number;
+  team_id: number;
   draw_round: string;
   team_name: string;
   team_code: string | null;
@@ -162,7 +164,7 @@ export default async function GamePage({
   const { data: teamsData, error: teamsError } = await supabase
     .from("game_leaderboard_teams")
     .select(
-      "player_id, player_team_id, draw_round, team_name, team_code, flag_image_url, counting_goals"
+      "player_id, player_team_id, team_id, draw_round, team_name, team_code, flag_image_url, counting_goals"
     )
     .eq("game_slug", slug);
 
@@ -249,6 +251,7 @@ export default async function GamePage({
 
                 return (
                   <tr
+                    id={`player-${row.player_id}`}
                     key={row.player_id}
                     className={getRowClass(row.total_goals)}
                   >
@@ -285,9 +288,15 @@ export default async function GamePage({
                                   className="h-3 w-4 rounded-sm object-cover"
                                 />
                               )}
-                              <span>
-                                {team.team_name} ({team.counting_goals})
-                              </span>
+                              <TeamLink
+                                teamId={team.team_id}
+                                name={team.team_name}
+                                code={team.team_code}
+                                flagUrl={null}
+                                imageClassName="hidden"
+                                className="gap-0"
+                              />
+                              <span>({team.counting_goals})</span>
                             </span>
                           ))
                         ) : (

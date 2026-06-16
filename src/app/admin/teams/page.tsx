@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import Nav from "@/components/nav";
 import AdminNav from "@/components/AdminNav";
 import AdminGameLinks from "@/components/AdminGameLinks";
+import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
@@ -220,7 +221,14 @@ export default async function AdminTeamsPage({
                   key={team.id}
                   className={team.is_eliminated ? "border-t bg-red-50" : "border-t"}
                 >
-                  <td className="p-4 font-semibold">{team.name}</td>
+                  <td className="p-4 font-semibold">
+                    <TeamLink
+                      teamId={team.id}
+                      name={team.name}
+                      code={team.code}
+                      showCode={false}
+                    />
+                  </td>
                   <td className="p-4 text-gray-600">{team.code}</td>
                   <td className="p-4">
                     {team.is_eliminated ? (

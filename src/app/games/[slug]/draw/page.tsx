@@ -1,9 +1,8 @@
-/* eslint-disable @next/next/no-img-element */
-
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import GameNav from "@/components/GameNav";
+import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
@@ -483,21 +482,12 @@ export default async function GameDrawPage({
                           assignment.draw_round}
                       </td>
                       <td className="p-4 font-semibold">
-                        <span className="inline-flex items-center gap-2">
-                          {assignment.flag_image_url && (
-                            <img
-                              src={assignment.flag_image_url}
-                              alt={`${assignment.team_name} flag`}
-                              className="h-4 w-6 rounded-sm object-cover"
-                            />
-                          )}
-                          <span>
-                            {assignment.team_name}
-                            {assignment.team_code
-                              ? ` (${assignment.team_code})`
-                              : ""}
-                          </span>
-                        </span>
+                        <TeamLink
+                          teamId={assignment.team_id}
+                          name={assignment.team_name}
+                          code={assignment.team_code}
+                          flagUrl={assignment.flag_image_url}
+                        />
                       </td>
                     </tr>
                   ))}
@@ -533,19 +523,12 @@ export default async function GameDrawPage({
                     {assignment.player_name}
                   </td>
                   <td className="p-4">
-                    <span className="inline-flex items-center gap-2">
-                      {assignment.flag_image_url && (
-                        <img
-                          src={assignment.flag_image_url}
-                          alt={`${assignment.team_name} flag`}
-                          className="h-4 w-6 rounded-sm object-cover"
-                        />
-                      )}
-                      <span>
-                        {assignment.team_name}
-                        {assignment.team_code ? ` (${assignment.team_code})` : ""}
-                      </span>
-                    </span>
+                    <TeamLink
+                      teamId={assignment.team_id}
+                      name={assignment.team_name}
+                      code={assignment.team_code}
+                      flagUrl={assignment.flag_image_url}
+                    />
                   </td>
                   <td className="p-4 text-gray-600">
                     {pickRoundLabels[assignment.draw_round] ??

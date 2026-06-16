@@ -1,12 +1,12 @@
-/* eslint-disable @next/next/no-img-element */
-
 import Link from "next/link";
 import Nav from "@/components/nav";
+import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
 
 export const dynamic = "force-dynamic";
 
 type DrawRow = {
+  team_id: number;
   game_slug: string;
   team_name: string;
   team_code: string | null;
@@ -15,6 +15,7 @@ type DrawRow = {
 };
 
 type TeamStats = {
+  team_id: number;
   team_name: string;
   team_code: string | null;
   flag_image_url: string | null;
@@ -36,7 +37,7 @@ function getRoundLabel(drawRound: string | null) {
 export default async function RandomnessPage() {
   const { data, error } = await supabase
     .from("game_leaderboard_teams")
-    .select("game_slug, team_name, team_code, flag_image_url, draw_round")
+    .select("team_id, game_slug, team_name, team_code, flag_image_url, draw_round")
     .order("team_name", { ascending: true });
 
   if (error) {
@@ -72,6 +73,7 @@ export default async function RandomnessPage() {
     const stats =
       existing ??
       ({
+        team_id: draw.team_id,
         team_name: draw.team_name,
         team_code: draw.team_code,
         flag_image_url: draw.flag_image_url,
@@ -150,7 +152,14 @@ export default async function RandomnessPage() {
             <p className="text-3xl font-bold">{mostPickedCount}</p>
             {mostPickedTeams.length > 0 && (
               <p className="text-sm text-gray-600 mt-1">
-                {mostPickedTeams.map((team) => team.team_name).join(", ")}
+                {mostPickedTeams.map((team, index) => (
+                  <span key={team.team_id}>
+                    {index > 0 ? ", " : ""}
+                    <Link href={`/teams/${team.team_id}`} className="underline">
+                      {team.team_name}
+                    </Link>
+                  </span>
+                ))}
               </p>
             )}
           </div>
@@ -183,21 +192,12 @@ export default async function RandomnessPage() {
               {teamStats.map((team) => (
                 <tr key={team.team_name} className="border-t">
                   <td className="p-3 sm:p-4 font-semibold">
-                    <div className="flex items-center gap-2">
-                      {team.flag_image_url && (
-                        <img
-                          src={team.flag_image_url}
-                          alt=""
-                          className="h-4 w-6 rounded-sm object-cover"
-                        />
-                      )}
-                      <span>{team.team_name}</span>
-                      {team.team_code && (
-                        <span className="text-xs text-gray-500">
-                          {team.team_code}
-                        </span>
-                      )}
-                    </div>
+                    <TeamLink
+                      teamId={team.team_id}
+                      name={team.team_name}
+                      code={team.team_code}
+                      flagUrl={team.flag_image_url}
+                    />
                   </td>
 
                   <td className="p-3 sm:p-4 text-right font-bold">

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Nav from "@/components/nav";
 import AdminNav from "@/components/AdminNav";
+import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
 
 type LeaderboardRow = {
@@ -18,6 +19,7 @@ type LeaderboardRow = {
 type LeaderboardTeamRow = {
   player_id: number;
   player_team_id: number;
+  team_id: number;
   draw_round: string;
   team_name: string;
   team_code: string | null;
@@ -94,7 +96,7 @@ export default async function AdminLeaderboardsPage() {
   const { data: teamsData, error: teamsError } = await supabase
     .from("game_leaderboard_teams")
     .select(
-      "player_id, player_team_id, draw_round, team_name, team_code, flag_image_url, counting_goals"
+      "player_id, player_team_id, team_id, draw_round, team_name, team_code, flag_image_url, counting_goals"
     );
 
   if (error || teamsError) {
@@ -197,11 +199,15 @@ export default async function AdminLeaderboardsPage() {
                                   className="h-3 w-4 rounded-sm object-cover"
                                 />
                               )}
-                              <span>
-                                {team.team_name}
-                                {team.team_code ? ` (${team.team_code})` : ""}{" "}
-                                - {team.counting_goals}
-                              </span>
+                              <TeamLink
+                                teamId={team.team_id}
+                                name={team.team_name}
+                                code={team.team_code}
+                                flagUrl={null}
+                                imageClassName="hidden"
+                                className="gap-0"
+                              />
+                              <span>- {team.counting_goals}</span>
                             </span>
                           ))
                         ) : (

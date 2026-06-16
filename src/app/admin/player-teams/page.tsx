@@ -2,6 +2,7 @@ import { revalidatePath } from "next/cache";
 import Nav from "@/components/nav";
 import AdminNav from "@/components/AdminNav";
 import AdminGameLinks from "@/components/AdminGameLinks";
+import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 
@@ -41,7 +42,9 @@ type PlayerTeamRow = {
   id: number;
   player_name: string;
   game_name: string;
+  team_id: number;
   team_name: string;
+  team_code: string | null;
   draw_round: string;
   scoring_starts_at: string | null;
 };
@@ -76,10 +79,14 @@ type PlayerTeamQueryRow = {
     | null;
   teams:
     | {
+        id: number;
         name: string;
+        code: string | null;
       }
     | {
+        id: number;
         name: string;
+        code: string | null;
       }[]
     | null;
 };
@@ -167,7 +174,7 @@ export default async function AdminPlayerTeamsPage() {
       draw_round,
       scoring_starts_at,
       players(name, games(name)),
-      teams(name)
+      teams(id, name, code)
     `
     )
     .order("id", { ascending: true });
@@ -206,7 +213,9 @@ export default async function AdminPlayerTeamsPage() {
       id: row.id,
       player_name: player?.name ?? "Unknown player",
       game_name: game?.name ?? "Unknown game",
+      team_id: team?.id ?? 0,
       team_name: team?.name ?? "Unknown team",
+      team_code: team?.code ?? null,
       draw_round: row.draw_round,
       scoring_starts_at: row.scoring_starts_at,
     };
@@ -309,7 +318,17 @@ export default async function AdminPlayerTeamsPage() {
                     {assignment.player_name}
                   </td>
                   <td className="p-4">{assignment.game_name}</td>
-                  <td className="p-4">{assignment.team_name}</td>
+                  <td className="p-4">
+                    {assignment.team_id ? (
+                      <TeamLink
+                        teamId={assignment.team_id}
+                        name={assignment.team_name}
+                        code={assignment.team_code}
+                      />
+                    ) : (
+                      assignment.team_name
+                    )}
+                  </td>
                   <td className="p-4 text-gray-600">
                     {drawRoundLabels[assignment.draw_round] ??
                       assignment.draw_round}

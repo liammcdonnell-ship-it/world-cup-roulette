@@ -1,7 +1,6 @@
-/* eslint-disable @next/next/no-img-element */
-
 import { notFound } from "next/navigation";
 import GameNav from "@/components/GameNav";
+import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
 
 type GameRow = {
@@ -50,35 +49,6 @@ type MatchDisplayRow = {
   status: string;
   kickoff_time: string | null;
 };
-
-function TeamNameWithFlag({
-  name,
-  code,
-  flagUrl,
-}: {
-  name: string;
-  code: string | null;
-  flagUrl: string | null;
-}) {
-  return (
-    <span className="inline-flex items-center gap-2">
-      {flagUrl ? (
-        <img
-          src={flagUrl}
-          alt={`${name} flag`}
-          className="h-4 w-6 rounded-sm object-cover"
-        />
-      ) : (
-        <span className="inline-block h-4 w-6 rounded-sm bg-gray-200" />
-      )}
-
-      <span>
-        {name}
-        {code ? ` (${code})` : ""}
-      </span>
-    </span>
-  );
-}
 
 function formatKickoff(kickoffTime: string | null) {
   if (!kickoffTime) {
@@ -203,11 +173,6 @@ export default async function PlayerMatchesPage({
     return aTime - bTime;
   });
 
-  const teamNames = playerTeams
-    .map((assignment) => assignment.teams?.name)
-    .filter(Boolean)
-    .join(", ");
-
   return (
     <main className="min-h-screen p-4 sm:p-8 bg-gray-50">
       <div className="max-w-5xl mx-auto">
@@ -223,7 +188,23 @@ export default async function PlayerMatchesPage({
 
         <p className="mb-8 text-gray-600">
           Showing scheduled and played matches for:{" "}
-          <span className="font-semibold">{teamNames || "No teams yet"}</span>
+          {playerTeams.length > 0 ? (
+            <span className="inline-flex flex-wrap gap-x-3 gap-y-1 font-semibold">
+              {playerTeams.map((assignment) =>
+                assignment.teams ? (
+                  <TeamLink
+                    key={assignment.id}
+                    teamId={assignment.teams.id}
+                    name={assignment.teams.name}
+                    code={assignment.teams.code}
+                    flagUrl={assignment.teams.flag_image_url}
+                  />
+                ) : null
+              )}
+            </span>
+          ) : (
+            <span className="font-semibold">No teams yet</span>
+          )}
         </p>
 
         <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">
@@ -246,7 +227,8 @@ export default async function PlayerMatchesPage({
 
                   <td className="p-4 font-semibold">
                     <span className="inline-flex flex-wrap items-center gap-2">
-                      <TeamNameWithFlag
+                      <TeamLink
+                        teamId={match.home_team_id}
                         name={match.home_team_name}
                         code={match.home_team_code}
                         flagUrl={match.home_flag_image_url}
@@ -254,7 +236,8 @@ export default async function PlayerMatchesPage({
 
                       <span className="text-gray-500">v</span>
 
-                      <TeamNameWithFlag
+                      <TeamLink
+                        teamId={match.away_team_id}
                         name={match.away_team_name}
                         code={match.away_team_code}
                         flagUrl={match.away_flag_image_url}
