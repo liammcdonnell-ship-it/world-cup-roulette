@@ -172,10 +172,10 @@ export default function ShareLeaderboardButton({
     ctx.fillStyle = "#ffffff";
     ctx.font = "700 22px Arial";
     ctx.fillText("Rank", 74, 266);
-    ctx.fillText("Player", 160, 266);
-    ctx.fillText("Teams", 430, 266);
-    ctx.fillText("Goals", 810, 266);
-    ctx.fillText("Status", 910, 266);
+    ctx.fillText("Player", 145, 266);
+    ctx.fillText("Teams", 315, 266);
+    ctx.fillText("Goals", 850, 266);
+    ctx.fillText("Status", 930, 266);
 
     rows.forEach((row, index) => {
       const y = 304 + index * rowHeight;
@@ -189,52 +189,52 @@ export default function ShareLeaderboardButton({
       ctx.fillStyle = "#111827";
       ctx.font = "700 28px Arial";
       ctx.fillText(String(row.rank), 78, y + 36);
-      drawText(ctx, row.playerName, 160, y + 36, 230);
+      drawText(ctx, row.playerName, 145, y + 36, 145);
 
       if (row.teams.length === 0) {
         ctx.font = "400 20px Arial";
         ctx.fillStyle = "#6b7280";
-        ctx.fillText("No teams drawn", 430, y + 34);
+        ctx.fillText("No teams drawn", 315, y + 34);
       } else {
-        let chipX = 430;
-        let chipY = y + 8;
-        const minChipX = 430;
-        const maxChipX = 796;
+        let chipX = 315;
+        let chipY = y + 6;
+        const minChipX = 315;
+        const maxChipX = 838;
 
         for (const [teamIndex, team] of row.teams.entries()) {
           const code = team.code ?? team.name.slice(0, 3).toUpperCase();
           const label = `${code} ${team.goals} in ${team.gamesPlayed}`;
-          const chipWidth = 112;
+          const chipWidth = 164;
 
           if (chipX + chipWidth > maxChipX) {
             chipX = minChipX;
-            chipY += 34;
+            chipY += 36;
           }
 
-          if (teamIndex > 0 && chipY > y + 42) {
-            ctx.font = "700 18px Arial";
+          if (teamIndex > 0 && chipY > y + 44) {
+            ctx.font = "700 22px Arial";
             ctx.fillStyle = "#6b7280";
-            ctx.fillText("+", chipX + 4, chipY + 25);
+            ctx.fillText("+", chipX + 4, chipY + 27);
             break;
           }
 
-          roundedRect(ctx, chipX, chipY, chipWidth, 30, 9);
+          roundedRect(ctx, chipX, chipY, chipWidth, 32, 9);
           ctx.fillStyle = team.isEliminated ? "#fee2e2" : "#f3f4f6";
           ctx.fill();
 
           const flag = team.flagUrl ? flags.get(team.flagUrl) : null;
 
           if (flag) {
-            ctx.drawImage(flag, chipX + 8, chipY + 8, 22, 14);
+            ctx.drawImage(flag, chipX + 10, chipY + 8, 28, 18);
           } else {
-            roundedRect(ctx, chipX + 8, chipY + 8, 22, 14, 3);
+            roundedRect(ctx, chipX + 10, chipY + 8, 28, 18, 3);
             ctx.fillStyle = "#d1d5db";
             ctx.fill();
           }
 
-          ctx.font = "700 14px Arial";
+          ctx.font = "700 19px Arial";
           ctx.fillStyle = team.isEliminated ? "#991b1b" : "#374151";
-          ctx.fillText(label, chipX + 36, chipY + 20);
+          ctx.fillText(label, chipX + 48, chipY + 23);
 
           chipX += chipWidth + 8;
         }
@@ -242,11 +242,11 @@ export default function ShareLeaderboardButton({
 
       ctx.fillStyle = "#111827";
       ctx.font = "700 30px Arial";
-      ctx.fillText(String(row.totalGoals), 828, y + 36);
+      ctx.fillText(String(row.totalGoals), 868, y + 36);
 
       ctx.font = "700 20px Arial";
       ctx.fillStyle = isPerfect ? "#166534" : isBust ? "#991b1b" : "#374151";
-      drawText(ctx, row.status, 910, y + 34, 110);
+      drawText(ctx, row.status, 930, y + 34, 100);
     });
 
     ctx.fillStyle = "#6b7280";

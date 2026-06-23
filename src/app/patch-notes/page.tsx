@@ -59,7 +59,7 @@ const changes = [
   {
     title: "Share image made more compact",
     details:
-      "The leaderboard share image now uses each country's flag, country code, goals, and games played instead of long country names, making it easier to share in WhatsApp.",
+      "The leaderboard share image now uses each country's flag, country code, goals, and games played instead of long country names. The country area has been widened so this information is easier to read in WhatsApp.",
   },
 ];
 
