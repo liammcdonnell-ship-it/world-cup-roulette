@@ -2,7 +2,10 @@
 
 type ShareTeam = {
   name: string;
+  code: string | null;
+  flagUrl: string | null;
   goals: number;
+  gamesPlayed: number;
   isEliminated: boolean;
 };
 
@@ -64,6 +67,16 @@ function roundedRect(
   ctx.closePath();
 }
 
+function loadImage(url: string) {
+  return new Promise<HTMLImageElement | null>((resolve) => {
+    const image = new Image();
+    image.crossOrigin = "anonymous";
+    image.onload = () => resolve(image);
+    image.onerror = () => resolve(null);
+    image.src = url;
+  });
+}
+
 async function downloadCanvas(canvas: HTMLCanvasElement, fileName: string) {
   const blob = await new Promise<Blob | null>((resolve) =>
     canvas.toBlob(resolve, "image/png", 0.95)
@@ -115,6 +128,25 @@ export default function ShareLeaderboardButton({
       return;
     }
 
+    const flagUrls = Array.from(
+      new Set(
+        rows
+          .flatMap((row) => row.teams.map((team) => team.flagUrl))
+          .filter((flagUrl): flagUrl is string => Boolean(flagUrl))
+      )
+    );
+
+    const flags = new Map<string, HTMLImageElement>();
+    await Promise.all(
+      flagUrls.map(async (flagUrl) => {
+        const image = await loadImage(flagUrl);
+
+        if (image) {
+          flags.set(flagUrl, image);
+        }
+      })
+    );
+
     ctx.scale(scale, scale);
     ctx.fillStyle = "#f8fafc";
     ctx.fillRect(0, 0, width, height);
@@ -159,17 +191,54 @@ export default function ShareLeaderboardButton({
       ctx.fillText(String(row.rank), 78, y + 36);
       drawText(ctx, row.playerName, 160, y + 36, 230);
 
-      ctx.font = "400 20px Arial";
-      const teamText =
-        row.teams.length > 0
-          ? row.teams
-              .map((team) => `${team.name} (${team.goals})`)
-              .join(", ")
-          : "No teams drawn";
-      ctx.fillStyle = row.teams.some((team) => team.isEliminated)
-        ? "#991b1b"
-        : "#374151";
-      drawText(ctx, teamText, 430, y + 34, 330);
+      if (row.teams.length === 0) {
+        ctx.font = "400 20px Arial";
+        ctx.fillStyle = "#6b7280";
+        ctx.fillText("No teams drawn", 430, y + 34);
+      } else {
+        let chipX = 430;
+        let chipY = y + 8;
+        const minChipX = 430;
+        const maxChipX = 796;
+
+        for (const [teamIndex, team] of row.teams.entries()) {
+          const code = team.code ?? team.name.slice(0, 3).toUpperCase();
+          const label = `${code} ${team.goals} in ${team.gamesPlayed}`;
+          const chipWidth = 112;
+
+          if (chipX + chipWidth > maxChipX) {
+            chipX = minChipX;
+            chipY += 34;
+          }
+
+          if (teamIndex > 0 && chipY > y + 42) {
+            ctx.font = "700 18px Arial";
+            ctx.fillStyle = "#6b7280";
+            ctx.fillText("+", chipX + 4, chipY + 25);
+            break;
+          }
+
+          roundedRect(ctx, chipX, chipY, chipWidth, 30, 9);
+          ctx.fillStyle = team.isEliminated ? "#fee2e2" : "#f3f4f6";
+          ctx.fill();
+
+          const flag = team.flagUrl ? flags.get(team.flagUrl) : null;
+
+          if (flag) {
+            ctx.drawImage(flag, chipX + 8, chipY + 8, 22, 14);
+          } else {
+            roundedRect(ctx, chipX + 8, chipY + 8, 22, 14, 3);
+            ctx.fillStyle = "#d1d5db";
+            ctx.fill();
+          }
+
+          ctx.font = "700 14px Arial";
+          ctx.fillStyle = team.isEliminated ? "#991b1b" : "#374151";
+          ctx.fillText(label, chipX + 36, chipY + 20);
+
+          chipX += chipWidth + 8;
+        }
+      }
 
       ctx.fillStyle = "#111827";
       ctx.font = "700 30px Arial";

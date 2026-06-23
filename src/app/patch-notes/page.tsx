@@ -46,6 +46,21 @@ const changes = [
     details:
       "When the Round of 32 draw opens, leaderboard pages will clearly explain that players may optionally draw a fourth team and should think carefully before doing so.",
   },
+  {
+    title: "Share leaderboard image",
+    details:
+      "Added a Share leaderboard button that creates an image of the current leaderboard, ready to download or share into WhatsApp.",
+  },
+  {
+    title: "Goals now show games played",
+    details:
+      "Country goal totals now show how many games they came from, for example 7 in 4. This appears on leaderboards, admin leaderboards, team totals, and the share image.",
+  },
+  {
+    title: "Share image made more compact",
+    details:
+      "The leaderboard share image now uses each country's flag, country code, goals, and games played instead of long country names, making it easier to share in WhatsApp.",
+  },
 ];
 
 export default function PatchNotesPage() {
@@ -56,7 +71,7 @@ export default function PatchNotesPage() {
 
         <h1 className="mb-2 text-3xl font-bold sm:text-4xl">Patch Notes</h1>
         <p className="mb-8 text-gray-600">
-          A quick summary of what changed today, 16 June 2026.
+          A quick summary of the latest app changes.
         </p>
 
         <div className="rounded-xl border bg-white shadow-sm">

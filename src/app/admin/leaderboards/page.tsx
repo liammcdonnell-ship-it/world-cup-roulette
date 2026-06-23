@@ -6,6 +6,11 @@ import AdminNav from "@/components/AdminNav";
 import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
 import { getTeamEliminationMap } from "@/lib/teamStatus";
+import {
+  countPlayedMatchesForTeam,
+  formatGoalsInGames,
+  type TeamMatchRow,
+} from "@/lib/teamGames";
 
 type LeaderboardRow = {
   game_id: number;
@@ -22,6 +27,7 @@ type LeaderboardTeamRow = {
   player_team_id: number;
   team_id: number;
   draw_round: string;
+  scoring_starts_at: string | null;
   team_name: string;
   team_code: string | null;
   flag_image_url: string | null;
@@ -97,7 +103,7 @@ export default async function AdminLeaderboardsPage() {
   const { data: teamsData, error: teamsError } = await supabase
     .from("game_leaderboard_teams")
     .select(
-      "player_id, player_team_id, team_id, draw_round, team_name, team_code, flag_image_url, counting_goals"
+      "player_id, player_team_id, team_id, draw_round, scoring_starts_at, team_name, team_code, flag_image_url, counting_goals"
     );
 
   if (error || teamsError) {
@@ -116,6 +122,10 @@ export default async function AdminLeaderboardsPage() {
   const gameRanks = getGameRanks((data ?? []) as LeaderboardRow[]);
   const leaderboardTeams = (teamsData ?? []) as LeaderboardTeamRow[];
   const teamEliminatedById = await getTeamEliminationMap();
+  const { data: matchesData } = await supabase
+    .from("matches_display")
+    .select("home_team_id, away_team_id, status, kickoff_time");
+  const matches = (matchesData ?? []) as TeamMatchRow[];
   const teamsByPlayer = new Map<number, LeaderboardTeamRow[]>();
 
   for (const team of leaderboardTeams) {
@@ -212,7 +222,17 @@ export default async function AdminLeaderboardsPage() {
                                   teamEliminatedById.get(team.team_id) ?? false
                                 }
                               />
-                              <span>- {team.counting_goals}</span>
+                              <span>
+                                -{" "}
+                                {formatGoalsInGames(
+                                  team.counting_goals,
+                                  countPlayedMatchesForTeam(
+                                    matches,
+                                    team.team_id,
+                                    team.scoring_starts_at
+                                  )
+                                )}
+                              </span>
                             </span>
                           ))
                         ) : (

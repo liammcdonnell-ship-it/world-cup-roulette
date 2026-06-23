@@ -7,6 +7,11 @@ import ShareLeaderboardButton from "@/components/ShareLeaderboardButton";
 import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
 import { getTeamEliminationMap } from "@/lib/teamStatus";
+import {
+  countPlayedMatchesForTeam,
+  formatGoalsInGames,
+  type TeamMatchRow,
+} from "@/lib/teamGames";
 
 type GameLeaderboardRow = {
   game_id: number;
@@ -23,6 +28,7 @@ type GameLeaderboardTeamRow = {
   player_team_id: number;
   team_id: number;
   draw_round: string;
+  scoring_starts_at: string | null;
   team_name: string;
   team_code: string | null;
   flag_image_url: string | null;
@@ -222,7 +228,7 @@ export default async function GamePage({
   const { data: teamsData, error: teamsError } = await supabase
     .from("game_leaderboard_teams")
     .select(
-      "player_id, player_team_id, team_id, draw_round, team_name, team_code, flag_image_url, counting_goals"
+      "player_id, player_team_id, team_id, draw_round, scoring_starts_at, team_name, team_code, flag_image_url, counting_goals"
     )
     .eq("game_slug", slug);
 
@@ -240,6 +246,10 @@ export default async function GamePage({
 
   const leaderboardTeams = (teamsData ?? []) as GameLeaderboardTeamRow[];
   const teamEliminatedById = await getTeamEliminationMap();
+  const { data: matchesData } = await supabase
+    .from("matches_display")
+    .select("home_team_id, away_team_id, status, kickoff_time");
+  const matches = (matchesData ?? []) as TeamMatchRow[];
 
   const teamsByPlayer = new Map<number, GameLeaderboardTeamRow[]>();
 
@@ -270,7 +280,14 @@ export default async function GamePage({
     status: getPlainDisplayStatus(row.total_goals),
     teams: (teamsByPlayer.get(row.player_id) ?? []).map((team) => ({
       name: team.team_name,
+      code: team.team_code,
+      flagUrl: team.flag_image_url,
       goals: team.counting_goals,
+      gamesPlayed: countPlayedMatchesForTeam(
+        matches,
+        team.team_id,
+        team.scoring_starts_at
+      ),
       isEliminated: teamEliminatedById.get(team.team_id) ?? false,
     })),
   }));
@@ -389,7 +406,18 @@ export default async function GamePage({
                                   teamEliminatedById.get(team.team_id) ?? false
                                 }
                               />
-                              <span>({team.counting_goals})</span>
+                              <span>
+                                (
+                                {formatGoalsInGames(
+                                  team.counting_goals,
+                                  countPlayedMatchesForTeam(
+                                    matches,
+                                    team.team_id,
+                                    team.scoring_starts_at
+                                  )
+                                )}
+                                )
+                              </span>
                             </span>
                           ))
                         ) : (
@@ -426,8 +454,8 @@ export default async function GamePage({
         </div>
 
         <p className="mt-4 text-sm text-gray-500">
-          The number in brackets is that team&apos;s counting goals for that
-          player.
+          The bracketed text shows that team&apos;s counting goals and played
+          matches for that player.
         </p>
       </div>
     </main>

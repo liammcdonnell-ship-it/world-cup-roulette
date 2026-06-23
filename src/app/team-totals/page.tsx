@@ -2,6 +2,11 @@ import { supabase } from "@/lib/supabase";
 import Nav from "@/components/nav";
 import TeamLink from "@/components/TeamLink";
 import { getTeamEliminationMap } from "@/lib/teamStatus";
+import {
+  countPlayedMatchesForTeam,
+  formatGoalsInGames,
+  type TeamMatchRow,
+} from "@/lib/teamGames";
 
 type TeamTotalRow = {
   team_id: number;
@@ -30,6 +35,10 @@ export default async function TeamTotalsPage() {
 
   const teams = (data ?? []) as TeamTotalRow[];
   const teamEliminatedById = await getTeamEliminationMap();
+  const { data: matchesData } = await supabase
+    .from("matches_display")
+    .select("home_team_id, away_team_id, status, kickoff_time");
+  const matches = (matchesData ?? []) as TeamMatchRow[];
 
   return (
     <main className="min-h-screen p-4 sm:p-8 bg-gray-50">
@@ -64,7 +73,12 @@ export default async function TeamTotalsPage() {
                     />
                   </td>
                   <td className="p-4 text-gray-600">{team.code}</td>
-                  <td className="p-4">{team.total_goals}</td>
+                  <td className="p-4">
+                    {formatGoalsInGames(
+                      team.total_goals,
+                      countPlayedMatchesForTeam(matches, team.team_id)
+                    )}
+                  </td>
                 </tr>
               ))}
 
