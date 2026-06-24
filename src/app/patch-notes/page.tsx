@@ -61,6 +61,11 @@ const changes = [
     details:
       "The leaderboard share image now uses each country's flag, country code, goals, and games played instead of long country names. The country area has been widened so this information is easier to read in WhatsApp.",
   },
+  {
+    title: "Player standings across games",
+    details:
+      "Player names now open a standings page showing every game that player appears in, including their current goals and drawn teams for each game.",
+  },
 ];
 
 export default function PatchNotesPage() {

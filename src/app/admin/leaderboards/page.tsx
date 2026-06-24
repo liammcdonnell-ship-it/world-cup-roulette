@@ -195,7 +195,14 @@ export default async function AdminLeaderboardsPage() {
                     <td className="p-4 text-gray-600">
                       {gameRanks.get(row.player_id) ?? "-"}
                     </td>
-                    <td className="p-4 font-semibold">{row.player_name}</td>
+                    <td className="p-4 font-semibold">
+                      <Link
+                        href={`/players/${row.player_id}`}
+                        className="underline decoration-gray-300 underline-offset-2 hover:decoration-gray-900"
+                      >
+                        {row.player_name}
+                      </Link>
+                    </td>
                     <td className="p-4">
                       <div className="flex flex-wrap gap-2">
                         {playerTeams.length > 0 ? (

@@ -269,7 +269,7 @@ export default async function TeamFixturesPage({
               {drawnPlayers.map((player) => (
                 <Link
                   key={`${player.game_slug}-${player.player_id}`}
-                  href={`/games/${player.game_slug}#player-${player.player_id}`}
+                  href={`/players/${player.player_id}`}
                   className="underline"
                 >
                   {player.player_name} ({player.game_name})

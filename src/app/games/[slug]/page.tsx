@@ -378,7 +378,12 @@ export default async function GamePage({
                             💩
                           </span>
                         )}
-                        {row.player_name}
+                        <Link
+                          href={`/players/${row.player_id}`}
+                          className="underline decoration-gray-300 underline-offset-2 hover:decoration-gray-900"
+                        >
+                          {row.player_name}
+                        </Link>
                       </div>
 
                       <div className="mt-2 flex flex-wrap gap-2">
