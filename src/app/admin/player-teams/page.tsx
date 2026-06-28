@@ -29,6 +29,7 @@ type TeamRow = {
   id: number;
   name: string;
   code: string | null;
+  is_eliminated: boolean;
 };
 
 type DrawRoundSetting = {
@@ -118,6 +119,18 @@ async function addPlayerTeam(formData: FormData) {
     return;
   }
 
+  // Safety check: do not allow eliminated teams to be assigned,
+  // even if someone submits the form manually.
+  const { data: selectedTeam } = await supabaseAdmin
+    .from("teams")
+    .select("id, is_eliminated")
+    .eq("id", teamId)
+    .single();
+
+  if (!selectedTeam || selectedTeam.is_eliminated) {
+    return;
+  }
+
   const { data: drawRoundSetting } = await supabaseAdmin
     .from("draw_round_settings")
     .select("draw_round, scoring_starts_at")
@@ -161,7 +174,7 @@ export default async function AdminPlayerTeamsPage() {
 
   const { data: teamsData } = await supabase
     .from("teams")
-    .select("id, name, code")
+    .select("id, name, code, is_eliminated")
     .order("name", { ascending: true });
 
   const { data: drawRoundsData } = await supabase
@@ -192,7 +205,10 @@ export default async function AdminPlayerTeamsPage() {
     };
   }) as PlayerRow[];
 
-  const teams = (teamsData ?? []) as TeamRow[];
+  const teams = ((teamsData ?? []) as TeamRow[]).filter(
+    (team) => !team.is_eliminated
+  );
+
   const drawRounds = (drawRoundsData ?? []) as DrawRoundSetting[];
 
   const drawRoundLabels = drawRounds.reduce<Record<string, string>>(
@@ -234,8 +250,9 @@ export default async function AdminPlayerTeamsPage() {
 
         <h1 className="text-4xl font-bold mb-2">Admin: Player Teams</h1>
         <p className="mb-8 text-gray-600">
-          Manually assign teams to players. Later-round assignments copy the
-          scoring start time from the draw round settings.
+          Manually assign teams to players. Eliminated teams cannot be assigned.
+          Later-round assignments copy the scoring start time from the draw
+          round settings.
         </p>
 
         <form
@@ -266,7 +283,7 @@ export default async function AdminPlayerTeamsPage() {
                 required
                 className="border rounded-lg p-3 bg-white"
               >
-                <option value="">Choose team</option>
+                <option value="">Choose non-eliminated team</option>
                 {teams.map((team) => (
                   <option key={team.id} value={team.id}>
                     {team.name}
@@ -378,8 +395,8 @@ export default async function AdminPlayerTeamsPage() {
 
         <p className="mt-4 text-sm text-gray-500">
           Duplicates are allowed across different players, but a player should
-          not have the same team twice. Later-round teams only count goals scored
-          after that draw round opens.
+          not have the same team twice. Eliminated teams cannot be assigned.
+          Later-round teams only count goals scored after that draw round opens.
         </p>
       </div>
     </main>
