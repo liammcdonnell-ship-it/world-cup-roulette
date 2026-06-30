@@ -152,21 +152,22 @@ function getCountingGoals(match: FootballDataMatch) {
   // World Cup Blackjack counts normal-time and extra-time goals,
   // but NOT penalty shootout goals.
   //
-  // Some football-data.org responses can put penalty shootout totals into
-  // score.fullTime, so when penalties exist we deliberately prefer the
-  // pre-shootout score.
+  // football-data.org can expose shootout matches like:
+  // regularTime: 1-1
+  // extraTime: 0-0
+  // penalties: 3-4
+  //
+  // In that case, the counting score should be 1-1.
   if (hasPenaltyShootout(match)) {
-    if (hasScore(match.score.extraTime)) {
-      return {
-        home: match.score.extraTime?.home ?? null,
-        away: match.score.extraTime?.away ?? null,
-      };
-    }
-
     if (hasScore(match.score.regularTime)) {
+      const regularHome = match.score.regularTime?.home ?? 0;
+      const regularAway = match.score.regularTime?.away ?? 0;
+      const extraHome = match.score.extraTime?.home ?? 0;
+      const extraAway = match.score.extraTime?.away ?? 0;
+
       return {
-        home: match.score.regularTime?.home ?? null,
-        away: match.score.regularTime?.away ?? null,
+        home: regularHome + extraHome,
+        away: regularAway + extraAway,
       };
     }
   }
