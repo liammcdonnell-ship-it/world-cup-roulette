@@ -4,6 +4,7 @@ type FootballDataMatch = {
   id: number;
   utcDate: string | null;
   status: string;
+  stage?: string | null;
   homeTeam: {
     id: number | null;
     name: string | null;
@@ -17,6 +18,7 @@ type FootballDataMatch = {
     tla?: string | null;
   };
   score: {
+    winner?: "HOME_TEAM" | "AWAY_TEAM" | "DRAW" | null;
     fullTime: {
       home: number | null;
       away: number | null;
@@ -51,6 +53,15 @@ type TeamRow = {
 const FOOTBALL_DATA_URL =
   "https://api.football-data.org/v4/competitions/WC/matches";
 
+const KNOCKOUT_STAGES = new Set([
+  "LAST_32",
+  "LAST_16",
+  "QUARTER_FINALS",
+  "SEMI_FINALS",
+  "THIRD_PLACE",
+  "FINAL",
+]);
+
 function normaliseName(name: string) {
   return name
     .toLowerCase()
@@ -73,8 +84,8 @@ function getTeamAliases(team: TeamRow) {
     "united states": ["usa", "united states of america"],
     "korea republic": ["south korea", "korea republic"],
     "ir iran": ["iran", "islamic republic of iran"],
-    "czechia": ["czech republic"],
-    "turkiye": ["turkey", "türkiye"],
+    czechia: ["czech republic"],
+    turkiye: ["turkey", "türkiye"],
     "cote divoire": ["ivory coast", "côte divoire", "cote d ivoire"],
     "cabo verde": ["cape verde", "cape verde islands"],
     "congo dr": ["dr congo", "d r congo", "democratic republic of congo"],
@@ -83,8 +94,8 @@ function getTeamAliases(team: TeamRow) {
       "bosnia herzegovina",
       "bosnia-herzegovina",
     ],
-    "england": ["eng"],
-    "scotland": ["sco"],
+    england: ["eng"],
+    scotland: ["sco"],
   };
 
   for (const alias of manualAliases[normalised] ?? []) {
@@ -124,11 +135,74 @@ function footballDataStatusToAppStatus(status: string) {
   return "scheduled";
 }
 
-function getFullTimeGoals(match: FootballDataMatch) {
+function hasScore(score?: { home: number | null; away: number | null }) {
+  return (
+    score?.home !== null &&
+    score?.home !== undefined &&
+    score?.away !== null &&
+    score?.away !== undefined
+  );
+}
+
+function hasPenaltyShootout(match: FootballDataMatch) {
+  return hasScore(match.score.penalties);
+}
+
+function getCountingGoals(match: FootballDataMatch) {
+  // World Cup Blackjack counts normal-time and extra-time goals,
+  // but NOT penalty shootout goals.
+  //
+  // Some football-data.org responses can put penalty shootout totals into
+  // score.fullTime, so when penalties exist we deliberately prefer the
+  // pre-shootout score.
+  if (hasPenaltyShootout(match)) {
+    if (hasScore(match.score.extraTime)) {
+      return {
+        home: match.score.extraTime?.home ?? null,
+        away: match.score.extraTime?.away ?? null,
+      };
+    }
+
+    if (hasScore(match.score.regularTime)) {
+      return {
+        home: match.score.regularTime?.home ?? null,
+        away: match.score.regularTime?.away ?? null,
+      };
+    }
+  }
+
   return {
     home: match.score.fullTime.home,
     away: match.score.fullTime.away,
   };
+}
+
+function isKnockoutMatch(match: FootballDataMatch) {
+  return match.stage ? KNOCKOUT_STAGES.has(match.stage) : false;
+}
+
+function getEliminatedTeamIdFromMatch(
+  match: FootballDataMatch,
+  homeTeamId: number,
+  awayTeamId: number
+) {
+  if (match.status !== "FINISHED") {
+    return null;
+  }
+
+  if (!isKnockoutMatch(match)) {
+    return null;
+  }
+
+  if (match.score.winner === "HOME_TEAM") {
+    return awayTeamId;
+  }
+
+  if (match.score.winner === "AWAY_TEAM") {
+    return homeTeamId;
+  }
+
+  return null;
 }
 
 export async function syncScoresFromFootballData() {
@@ -186,6 +260,7 @@ export async function syncScoresFromFootballData() {
 
   const syncedMatches = [];
   const skippedMatches = [];
+  const eliminatedTeamIds = new Set<number>();
 
   for (const match of matches) {
     const externalFixtureId = String(match.id);
@@ -215,7 +290,7 @@ export async function syncScoresFromFootballData() {
     }
 
     const appStatus = footballDataStatusToAppStatus(match.status);
-    const goals = getFullTimeGoals(match);
+    const goals = getCountingGoals(match);
 
     const { error: upsertError } = await supabaseAdmin.from("matches").upsert(
       {
@@ -246,14 +321,45 @@ export async function syncScoresFromFootballData() {
       continue;
     }
 
+    const eliminatedTeamId = getEliminatedTeamIdFromMatch(
+      match,
+      homeTeamId,
+      awayTeamId
+    );
+
+    if (eliminatedTeamId) {
+      eliminatedTeamIds.add(eliminatedTeamId);
+    }
+
     syncedMatches.push({
       fixture_id: externalFixtureId,
       home_team: match.homeTeam.name,
       away_team: match.awayTeam.name,
       status: appStatus,
       api_status: match.status,
+      stage: match.stage ?? null,
+      winner: match.score.winner ?? null,
       score: `${goals.home ?? "-"}-${goals.away ?? "-"}`,
+      penalties_ignored: hasPenaltyShootout(match),
+      eliminated_team_id: eliminatedTeamId,
     });
+  }
+
+  let eliminated_count = 0;
+
+  if (eliminatedTeamIds.size > 0) {
+    const { error: eliminationError } = await supabaseAdmin
+      .from("teams")
+      .update({ is_eliminated: true })
+      .in("id", Array.from(eliminatedTeamIds));
+
+    if (eliminationError) {
+      skippedMatches.push({
+        reason: `Could not update eliminated teams: ${eliminationError.message}`,
+      });
+    } else {
+      eliminated_count = eliminatedTeamIds.size;
+    }
   }
 
   return {
@@ -262,6 +368,8 @@ export async function syncScoresFromFootballData() {
     match_count_from_api: matches.length,
     synced_count: syncedMatches.length,
     skipped_count: skippedMatches.length,
+    eliminated_count,
+    eliminated_team_ids: Array.from(eliminatedTeamIds),
     synced_matches: syncedMatches,
     skipped_matches: skippedMatches,
   };
