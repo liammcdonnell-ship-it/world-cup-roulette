@@ -27,6 +27,11 @@ const changes = [
       "Added backup morning score refreshes and extra match-finish checks so knockout games can update after normal time, extra time, or penalties.",
   },
   {
+    title: "Shootouts and eliminations fixed",
+    details:
+      "Score sync now ignores penalty shootout goals for player totals but still uses the knockout winner to mark the losing team as eliminated.",
+  },
+  {
     title: "Team fixture pages",
     details:
       "Team names now link to fixture pages showing that team's scheduled and completed matches, plus which players drew them.",
@@ -65,6 +70,11 @@ const changes = [
     title: "Player standings across games",
     details:
       "Player names now open a standings page showing every game that player appears in, including their current goals and drawn teams for each game.",
+  },
+  {
+    title: "Later draw protection",
+    details:
+      "Tightened manual team assignment so eliminated teams cannot be added to later-round draws by mistake.",
   },
 ];
 

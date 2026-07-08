@@ -288,6 +288,7 @@ export default async function AdminPlayerTeamsPage() {
                   <option key={team.id} value={team.id}>
                     {team.name}
                     {team.code ? ` (${team.code})` : ""}
+                    {team.is_eliminated ? " - eliminated" : ""}
                   </option>
                 ))}
               </select>
