@@ -15,7 +15,7 @@
     },
     {
       "path": "/api/sync-scores",
-      "schedule": "* 18-23 15,18,19 7 *"
+      "schedule": "*/5 18-23 15,18,19 7 *"
     },
     {
       "path": "/api/sync-scores/finish-window",
