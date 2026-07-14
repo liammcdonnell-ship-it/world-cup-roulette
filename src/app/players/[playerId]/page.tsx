@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import Nav from "@/components/nav";
 import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
-import { getTeamEliminationMap } from "@/lib/teamStatus";
+import { getTeamStatusMaps } from "@/lib/teamStatus";
 import {
   countPlayedMatchesForTeam,
   formatGoalsInGames,
@@ -188,7 +188,8 @@ export default async function PlayerPage({
   }
 
   const teams = (teamsData ?? []) as LeaderboardTeamRow[];
-  const teamEliminatedById = await getTeamEliminationMap();
+  const { teamEliminatedById, teamDisplayStatusById } =
+    await getTeamStatusMaps();
   const { data: matchesData } = await supabase
     .from("matches_display")
     .select("home_team_id, away_team_id, status, kickoff_time");
@@ -295,6 +296,9 @@ export default async function PlayerPage({
                                 isEliminated={
                                   teamEliminatedById.get(team.team_id) ?? false
                                 }
+                                status={teamDisplayStatusById.get(
+                                  team.team_id
+                                )}
                               />
                               <span>
                                 (

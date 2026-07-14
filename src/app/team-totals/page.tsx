@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import Nav from "@/components/nav";
 import TeamLink from "@/components/TeamLink";
-import { getTeamEliminationMap } from "@/lib/teamStatus";
+import { getTeamStatusMaps } from "@/lib/teamStatus";
 import {
   countPlayedMatchesForTeam,
   formatGoalsInGames,
@@ -34,7 +34,8 @@ export default async function TeamTotalsPage() {
   }
 
   const teams = (data ?? []) as TeamTotalRow[];
-  const teamEliminatedById = await getTeamEliminationMap();
+  const { teamEliminatedById, teamDisplayStatusById } =
+    await getTeamStatusMaps();
   const { data: matchesData } = await supabase
     .from("matches_display")
     .select("home_team_id, away_team_id, status, kickoff_time");
@@ -70,6 +71,7 @@ export default async function TeamTotalsPage() {
                       flagUrl={team.flag_image_url}
                       showCode={false}
                       isEliminated={teamEliminatedById.get(team.team_id) ?? false}
+                      status={teamDisplayStatusById.get(team.team_id)}
                     />
                   </td>
                   <td className="p-4 text-gray-600">{team.code}</td>

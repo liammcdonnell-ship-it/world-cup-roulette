@@ -7,12 +7,15 @@ type ShareTeam = {
   goals: number;
   gamesPlayed: number;
   isEliminated: boolean;
+  liveGoals?: number;
+  status?: "active" | "eliminated" | "third_place_playoff";
 };
 
 type ShareRow = {
   rank: number;
   playerName: string;
   totalGoals: number;
+  liveGoals?: number;
   status: string;
   teams: ShareTeam[];
 };
@@ -203,7 +206,9 @@ export default function ShareLeaderboardButton({
 
         for (const [teamIndex, team] of row.teams.entries()) {
           const code = team.code ?? team.name.slice(0, 3).toUpperCase();
-          const label = `${code} ${team.goals} in ${team.gamesPlayed}`;
+          const label = `${code} ${team.goals} in ${team.gamesPlayed}${
+            (team.liveGoals ?? 0) > 0 ? " live" : ""
+          }`;
           const chipWidth = 164;
 
           if (chipX + chipWidth > maxChipX) {
@@ -219,7 +224,14 @@ export default function ShareLeaderboardButton({
           }
 
           roundedRect(ctx, chipX, chipY, chipWidth, 32, 9);
-          ctx.fillStyle = team.isEliminated ? "#fee2e2" : "#f3f4f6";
+          const teamStatus =
+            team.status ?? (team.isEliminated ? "eliminated" : "active");
+          ctx.fillStyle =
+            teamStatus === "third_place_playoff"
+              ? "#f3e8ff"
+              : teamStatus === "eliminated"
+                ? "#fee2e2"
+                : "#f3f4f6";
           ctx.fill();
 
           const flag = team.flagUrl ? flags.get(team.flagUrl) : null;
@@ -233,7 +245,12 @@ export default function ShareLeaderboardButton({
           }
 
           ctx.font = "700 19px Arial";
-          ctx.fillStyle = team.isEliminated ? "#991b1b" : "#374151";
+          ctx.fillStyle =
+            teamStatus === "third_place_playoff"
+              ? "#6b21a8"
+              : teamStatus === "eliminated"
+                ? "#991b1b"
+                : "#374151";
           ctx.fillText(label, chipX + 48, chipY + 23);
 
           chipX += chipWidth + 8;
@@ -243,6 +260,11 @@ export default function ShareLeaderboardButton({
       ctx.fillStyle = "#111827";
       ctx.font = "700 30px Arial";
       ctx.fillText(String(row.totalGoals), 868, y + 36);
+      if ((row.liveGoals ?? 0) > 0) {
+        ctx.font = "700 14px Arial";
+        ctx.fillStyle = "#b45309";
+        ctx.fillText("LIVE", 864, y + 56);
+      }
 
       ctx.font = "700 20px Arial";
       ctx.fillStyle = isPerfect ? "#166534" : isBust ? "#991b1b" : "#374151";

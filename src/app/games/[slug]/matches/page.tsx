@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import GameNav from "@/components/GameNav";
 import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
-import { getTeamEliminationMap } from "@/lib/teamStatus";
+import { getTeamStatusMaps } from "@/lib/teamStatus";
 
 type GameRow = {
   id: number;
@@ -64,7 +64,8 @@ export default async function GameMatchesPage({
   }
 
   const matches = (data ?? []) as MatchDisplayRow[];
-  const teamEliminatedById = await getTeamEliminationMap();
+  const { teamEliminatedById, teamDisplayStatusById } =
+    await getTeamStatusMaps();
 
   return (
     <main className="min-h-screen p-4 sm:p-8 bg-gray-50">
@@ -76,7 +77,8 @@ export default async function GameMatchesPage({
           Game: <span className="font-semibold">{game.name}</span>
         </p>
         <p className="mb-8 text-gray-600">
-          These scores feed the leaderboards. Only finished matches count.
+          These scores feed the leaderboards. Live scores are provisional until
+          each match is finished.
         </p>
 
         <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">
@@ -102,6 +104,7 @@ export default async function GameMatchesPage({
                         isEliminated={
                           teamEliminatedById.get(match.home_team_id) ?? false
                         }
+                        status={teamDisplayStatusById.get(match.home_team_id)}
                       />
 
                       <span className="text-gray-500">v</span>
@@ -114,6 +117,7 @@ export default async function GameMatchesPage({
                         isEliminated={
                           teamEliminatedById.get(match.away_team_id) ?? false
                         }
+                        status={teamDisplayStatusById.get(match.away_team_id)}
                       />
                     </span>
                   </td>

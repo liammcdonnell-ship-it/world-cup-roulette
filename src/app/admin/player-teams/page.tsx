@@ -5,6 +5,7 @@ import AdminGameLinks from "@/components/AdminGameLinks";
 import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getTeamStatusMaps } from "@/lib/teamStatus";
 
 type PlayerRow = {
   id: number;
@@ -208,6 +209,7 @@ export default async function AdminPlayerTeamsPage() {
   const teams = ((teamsData ?? []) as TeamRow[]).filter(
     (team) => !team.is_eliminated
   );
+  const { teamDisplayStatusById } = await getTeamStatusMaps();
 
   const drawRounds = (drawRoundsData ?? []) as DrawRoundSetting[];
 
@@ -347,6 +349,7 @@ export default async function AdminPlayerTeamsPage() {
                         name={assignment.team_name}
                         code={assignment.team_code}
                         isEliminated={assignment.is_eliminated}
+                        status={teamDisplayStatusById.get(assignment.team_id)}
                       />
                     ) : (
                       assignment.team_name

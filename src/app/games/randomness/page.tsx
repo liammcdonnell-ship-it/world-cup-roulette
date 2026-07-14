@@ -2,7 +2,7 @@ import Link from "next/link";
 import Nav from "@/components/nav";
 import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
-import { getTeamEliminationMap } from "@/lib/teamStatus";
+import { getTeamStatusMaps } from "@/lib/teamStatus";
 
 export const dynamic = "force-dynamic";
 
@@ -65,7 +65,8 @@ export default async function RandomnessPage() {
   }
 
   const draws = (data ?? []) as DrawRow[];
-  const teamEliminatedById = await getTeamEliminationMap();
+  const { teamEliminatedById, teamDisplayStatusById } =
+    await getTeamStatusMaps();
 
   const statsByTeam = new Map<string, TeamStats>();
 
@@ -200,6 +201,7 @@ export default async function RandomnessPage() {
                       code={team.team_code}
                       flagUrl={team.flag_image_url}
                       isEliminated={teamEliminatedById.get(team.team_id) ?? false}
+                      status={teamDisplayStatusById.get(team.team_id)}
                     />
                   </td>
 

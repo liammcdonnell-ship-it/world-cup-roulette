@@ -76,6 +76,16 @@ const changes = [
     details:
       "Tightened manual team assignment so eliminated teams cannot be added to later-round draws by mistake.",
   },
+  {
+    title: "Third-place playoff teams highlighted",
+    details:
+      "Semi-final losers who still have the third-place playoff to play now show in purple instead of red, including on shared leaderboard images, because their remaining goals still count.",
+  },
+  {
+    title: "Live provisional leaderboard scoring",
+    details:
+      "During the remaining match windows, score sync runs every minute and leaderboards include clearly marked provisional live goals until the final score is confirmed.",
+  },
 ];
 
 export default function PatchNotesPage() {

@@ -7,7 +7,7 @@ import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
 import { syncScoresFromFootballData } from "@/lib/syncScores";
-import { getTeamEliminationMap } from "@/lib/teamStatus";
+import { getTeamStatusMaps } from "@/lib/teamStatus";
 
 type TeamRow = {
   id: number;
@@ -152,7 +152,8 @@ export default async function AdminMatchesPage({
 
   const teams = (teamsData ?? []) as TeamRow[];
   const matches = (matchesData ?? []) as MatchRow[];
-  const teamEliminatedById = await getTeamEliminationMap();
+  const { teamEliminatedById, teamDisplayStatusById } =
+    await getTeamStatusMaps();
 
   return (
     <main className="min-h-screen p-8 bg-gray-50">
@@ -163,7 +164,8 @@ export default async function AdminMatchesPage({
 
         <h1 className="text-4xl font-bold mb-2">Admin: Matches</h1>
         <p className="mb-8 text-gray-600">
-          Add or delete match scores. Finished matches feed the leaderboards.
+          Add or delete match scores. Live scores can feed provisional
+          leaderboard totals until matches are finished.
         </p>
 
         {query?.message && (
@@ -308,6 +310,7 @@ export default async function AdminMatchesPage({
                         isEliminated={
                           teamEliminatedById.get(match.home_team_id) ?? false
                         }
+                        status={teamDisplayStatusById.get(match.home_team_id)}
                       />
                       <span className="text-gray-500">v</span>
                       <TeamLink
@@ -317,6 +320,7 @@ export default async function AdminMatchesPage({
                         isEliminated={
                           teamEliminatedById.get(match.away_team_id) ?? false
                         }
+                        status={teamDisplayStatusById.get(match.away_team_id)}
                       />
                     </span>
                   </td>
@@ -350,7 +354,8 @@ export default async function AdminMatchesPage({
         </div>
 
         <p className="mt-4 text-sm text-gray-500">
-          Only matches marked as finished count towards team and player totals.
+          Finished matches count permanently. Live matches can appear as
+          provisional leaderboard totals.
         </p>
       </div>
     </main>

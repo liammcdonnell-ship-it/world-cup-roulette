@@ -5,6 +5,7 @@ import GameNav from "@/components/GameNav";
 import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getTeamStatusMaps } from "@/lib/teamStatus";
 
 type GameRow = {
   id: number;
@@ -294,6 +295,7 @@ export default async function GameDrawPage({
       };
     }
   ) as AssignmentRow[];
+  const { teamDisplayStatusById } = await getTeamStatusMaps();
 
   const selectedPlayer = selectedPlayerId
     ? players.find((player) => player.id === selectedPlayerId)
@@ -492,6 +494,9 @@ export default async function GameDrawPage({
                           code={assignment.team_code}
                           flagUrl={assignment.flag_image_url}
                           isEliminated={assignment.is_eliminated}
+                          status={teamDisplayStatusById.get(
+                            assignment.team_id
+                          )}
                         />
                       </td>
                     </tr>
@@ -534,6 +539,7 @@ export default async function GameDrawPage({
                       code={assignment.team_code}
                       flagUrl={assignment.flag_image_url}
                       isEliminated={assignment.is_eliminated}
+                      status={teamDisplayStatusById.get(assignment.team_id)}
                     />
                   </td>
                   <td className="p-4 text-gray-600">

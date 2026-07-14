@@ -5,10 +5,11 @@ import Nav from "@/components/nav";
 import AdminNav from "@/components/AdminNav";
 import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
-import { getTeamEliminationMap } from "@/lib/teamStatus";
+import { getTeamStatusMaps } from "@/lib/teamStatus";
 import {
   countPlayedMatchesForTeam,
   formatGoalsInGames,
+  getLiveGoalsForTeam,
   type TeamMatchRow,
 } from "@/lib/teamGames";
 
@@ -32,6 +33,16 @@ type LeaderboardTeamRow = {
   team_code: string | null;
   flag_image_url: string | null;
   counting_goals: number;
+};
+
+type LiveLeaderboardRow = LeaderboardRow & {
+  display_total_goals: number;
+  final_total_goals: number;
+  live_goals: number;
+};
+
+type LiveLeaderboardTeamRow = LeaderboardTeamRow & {
+  live_goals: number;
 };
 
 const drawRoundOrder: Record<string, number> = {
@@ -64,7 +75,9 @@ function getRowClass(totalGoals: number) {
   return "border-t";
 }
 
-function sortLeaderboard(rows: LeaderboardRow[]) {
+function sortLeaderboard<T extends { total_goals: number; player_name: string }>(
+  rows: T[]
+) {
   return [...rows].sort((a, b) => {
     if (b.total_goals !== a.total_goals) {
       return b.total_goals - a.total_goals;
@@ -118,19 +131,28 @@ export default async function AdminLeaderboardsPage() {
     );
   }
 
-  const leaderboards = sortLeaderboard((data ?? []) as LeaderboardRow[]);
-  const gameRanks = getGameRanks((data ?? []) as LeaderboardRow[]);
+  const baseLeaderboards = (data ?? []) as LeaderboardRow[];
   const leaderboardTeams = (teamsData ?? []) as LeaderboardTeamRow[];
-  const teamEliminatedById = await getTeamEliminationMap();
+  const { teamEliminatedById, teamDisplayStatusById } =
+    await getTeamStatusMaps();
   const { data: matchesData } = await supabase
     .from("matches_display")
-    .select("home_team_id, away_team_id, status, kickoff_time");
+    .select(
+      "home_team_id, away_team_id, home_goals, away_goals, status, kickoff_time"
+    );
   const matches = (matchesData ?? []) as TeamMatchRow[];
-  const teamsByPlayer = new Map<number, LeaderboardTeamRow[]>();
+  const teamsByPlayer = new Map<number, LiveLeaderboardTeamRow[]>();
 
   for (const team of leaderboardTeams) {
     const existingTeams = teamsByPlayer.get(team.player_id) ?? [];
-    existingTeams.push(team);
+    existingTeams.push({
+      ...team,
+      live_goals: getLiveGoalsForTeam(
+        matches,
+        team.team_id,
+        team.scoring_starts_at
+      ),
+    });
     teamsByPlayer.set(team.player_id, existingTeams);
   }
 
@@ -147,6 +169,24 @@ export default async function AdminLeaderboardsPage() {
       return a.team_name.localeCompare(b.team_name);
     });
   }
+
+  const leaderboards = sortLeaderboard(
+    baseLeaderboards.map((row) => {
+      const liveGoals = (teamsByPlayer.get(row.player_id) ?? []).reduce(
+        (total, team) => total + team.live_goals,
+        0
+      );
+
+      return {
+        ...row,
+        total_goals: row.total_goals + liveGoals,
+        display_total_goals: row.total_goals + liveGoals,
+        final_total_goals: row.total_goals,
+        live_goals: liveGoals,
+      };
+    })
+  ) as LiveLeaderboardRow[];
+  const gameRanks = getGameRanks(leaderboards);
 
   return (
     <main className="min-h-screen bg-gray-50 p-4 sm:p-8">
@@ -182,7 +222,7 @@ export default async function AdminLeaderboardsPage() {
                 return (
                   <tr
                     key={`${row.game_id}-${row.player_id}`}
-                    className={getRowClass(row.total_goals)}
+                    className={getRowClass(row.display_total_goals)}
                   >
                     <td className="p-4 font-semibold">
                       <Link
@@ -228,11 +268,14 @@ export default async function AdminLeaderboardsPage() {
                                 isEliminated={
                                   teamEliminatedById.get(team.team_id) ?? false
                                 }
+                                status={teamDisplayStatusById.get(
+                                  team.team_id
+                                )}
                               />
                               <span>
                                 -{" "}
                                 {formatGoalsInGames(
-                                  team.counting_goals,
+                                  team.counting_goals + team.live_goals,
                                   countPlayedMatchesForTeam(
                                     matches,
                                     team.team_id,
@@ -240,6 +283,11 @@ export default async function AdminLeaderboardsPage() {
                                   )
                                 )}
                               </span>
+                              {team.live_goals > 0 && (
+                                <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-amber-800">
+                                  live +{team.live_goals}
+                                </span>
+                              )}
                             </span>
                           ))
                         ) : (
@@ -250,10 +298,20 @@ export default async function AdminLeaderboardsPage() {
                       </div>
                     </td>
                     <td className="p-4 text-right text-lg font-bold">
-                      {row.total_goals}
+                      {row.display_total_goals}
+                      {row.live_goals > 0 && (
+                        <div className="mt-1 text-xs font-semibold text-amber-700">
+                          {row.final_total_goals} final + {row.live_goals} live
+                        </div>
+                      )}
                     </td>
                     <td className="p-4 text-gray-600">
-                      {getDisplayStatus(row.total_goals)}
+                      {getDisplayStatus(row.display_total_goals)}
+                      {row.live_goals > 0 && (
+                        <div className="mt-1 text-xs font-bold uppercase text-amber-700">
+                          Live provisional
+                        </div>
+                      )}
                     </td>
                     <td className="p-4">
                       <Link

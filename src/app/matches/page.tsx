@@ -1,7 +1,7 @@
 import { supabase } from "@/lib/supabase";
 import Nav from "@/components/nav";
 import TeamLink from "@/components/TeamLink";
-import { getTeamEliminationMap } from "@/lib/teamStatus";
+import { getTeamStatusMaps } from "@/lib/teamStatus";
 
 type MatchDisplayRow = {
   id: number;
@@ -39,7 +39,8 @@ export default async function MatchesPage() {
   }
 
   const matches = (data ?? []) as MatchDisplayRow[];
-  const teamEliminatedById = await getTeamEliminationMap();
+  const { teamEliminatedById, teamDisplayStatusById } =
+    await getTeamStatusMaps();
 
   return (
     <main className="min-h-screen p-4 sm:p-8 bg-gray-50">
@@ -48,7 +49,8 @@ export default async function MatchesPage() {
 
         <h1 className="text-3xl sm:text-4xl font-bold mb-2">Matches</h1>
         <p className="mb-8 text-gray-600">
-          These scores feed the leaderboards. Only finished matches count.
+          These scores feed the leaderboards. Live scores are provisional until
+          each match is finished.
         </p>
 
         <div className="overflow-x-auto rounded-xl border bg-white shadow-sm">
@@ -74,6 +76,7 @@ export default async function MatchesPage() {
                         isEliminated={
                           teamEliminatedById.get(match.home_team_id) ?? false
                         }
+                        status={teamDisplayStatusById.get(match.home_team_id)}
                       />
 
                       <span className="text-gray-500">v</span>
@@ -86,6 +89,7 @@ export default async function MatchesPage() {
                         isEliminated={
                           teamEliminatedById.get(match.away_team_id) ?? false
                         }
+                        status={teamDisplayStatusById.get(match.away_team_id)}
                       />
                     </span>
                   </td>

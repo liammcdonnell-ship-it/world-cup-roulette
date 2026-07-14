@@ -6,6 +6,7 @@ import AdminGameLinks from "@/components/AdminGameLinks";
 import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
 import { supabaseAdmin } from "@/lib/supabaseAdmin";
+import { getTeamStatusMaps } from "@/lib/teamStatus";
 
 type TeamRow = {
   id: number;
@@ -125,6 +126,7 @@ export default async function AdminTeamsPage({
   }
 
   const teams = (data ?? []) as TeamRow[];
+  const { teamDisplayStatusById } = await getTeamStatusMaps();
   const activeTeams = teams.filter((team) => !team.is_eliminated);
   const eliminatedTeams = teams.filter((team) => team.is_eliminated);
 
@@ -219,7 +221,14 @@ export default async function AdminTeamsPage({
               {teams.map((team) => (
                 <tr
                   key={team.id}
-                  className={team.is_eliminated ? "border-t bg-red-50" : "border-t"}
+                  className={
+                    teamDisplayStatusById.get(team.id) ===
+                    "third_place_playoff"
+                      ? "border-t bg-purple-50"
+                      : team.is_eliminated
+                        ? "border-t bg-red-50"
+                        : "border-t"
+                  }
                 >
                   <td className="p-4 font-semibold">
                     <TeamLink
@@ -228,11 +237,17 @@ export default async function AdminTeamsPage({
                       code={team.code}
                       showCode={false}
                       isEliminated={team.is_eliminated}
+                      status={teamDisplayStatusById.get(team.id)}
                     />
                   </td>
                   <td className="p-4 text-gray-600">{team.code}</td>
                   <td className="p-4">
-                    {team.is_eliminated ? (
+                    {teamDisplayStatusById.get(team.id) ===
+                    "third_place_playoff" ? (
+                      <span className="inline-flex rounded-full border border-purple-200 bg-purple-100 px-2 py-1 text-xs font-semibold text-purple-800">
+                        Third-place playoff
+                      </span>
+                    ) : team.is_eliminated ? (
                       <span className="inline-flex rounded-full border border-red-200 bg-red-100 px-2 py-1 text-xs font-semibold text-red-800">
                         Eliminated
                       </span>

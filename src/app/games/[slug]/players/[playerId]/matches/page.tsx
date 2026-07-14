@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import GameNav from "@/components/GameNav";
 import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
-import { getTeamEliminationMap } from "@/lib/teamStatus";
+import { getTeamStatusMaps } from "@/lib/teamStatus";
 
 type GameRow = {
   id: number;
@@ -186,7 +186,8 @@ export default async function PlayerMatchesPage({
     .single();
 
   const leaderboard = leaderboardData as LeaderboardRow | null;
-  const teamEliminatedById = await getTeamEliminationMap();
+  const { teamEliminatedById, teamDisplayStatusById } =
+    await getTeamStatusMaps();
 
   return (
     <main className="min-h-screen p-4 sm:p-8 bg-gray-50">
@@ -220,6 +221,7 @@ export default async function PlayerMatchesPage({
                     isEliminated={
                       teamEliminatedById.get(assignment.teams.id) ?? false
                     }
+                    status={teamDisplayStatusById.get(assignment.teams.id)}
                   />
                 ) : null
               )}
@@ -257,6 +259,7 @@ export default async function PlayerMatchesPage({
                         isEliminated={
                           teamEliminatedById.get(match.home_team_id) ?? false
                         }
+                        status={teamDisplayStatusById.get(match.home_team_id)}
                       />
 
                       <span className="text-gray-500">v</span>
@@ -269,6 +272,7 @@ export default async function PlayerMatchesPage({
                         isEliminated={
                           teamEliminatedById.get(match.away_team_id) ?? false
                         }
+                        status={teamDisplayStatusById.get(match.away_team_id)}
                       />
                     </span>
                   </td>

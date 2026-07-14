@@ -5,7 +5,7 @@ import { notFound } from "next/navigation";
 import Nav from "@/components/nav";
 import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
-import { getTeamEliminationMap } from "@/lib/teamStatus";
+import { getTeamStatusMaps } from "@/lib/teamStatus";
 
 type TeamRow = {
   id: number;
@@ -142,7 +142,9 @@ export default async function TeamFixturesPage({
 
     return aTime - bTime;
   });
-  const teamEliminatedById = await getTeamEliminationMap();
+  const { teamEliminatedById, teamDisplayStatusById } =
+    await getTeamStatusMaps();
+  const teamDisplayStatus = teamDisplayStatusById.get(team.id) ?? "active";
 
   const drawnPlayers = ((drawnPlayersData ?? []) as DrawnPlayerRow[])
     .map((row) => {
@@ -193,14 +195,22 @@ export default async function TeamFixturesPage({
           <div>
             <h1
               className={`text-3xl font-bold sm:text-4xl ${
-                team.is_eliminated ? "text-red-700" : ""
+                teamDisplayStatus === "third_place_playoff"
+                  ? "text-purple-700"
+                  : team.is_eliminated
+                    ? "text-red-700"
+                    : ""
               }`}
             >
               {team.name} Fixtures
             </h1>
             <p className="text-gray-600">
               {team.code ? `${team.code} · ` : ""}
-              {team.is_eliminated ? "Eliminated" : "Active"}
+              {teamDisplayStatus === "third_place_playoff"
+                ? "Third-place playoff"
+                : team.is_eliminated
+                  ? "Eliminated"
+                  : "Active"}
             </p>
           </div>
         </div>
@@ -231,6 +241,7 @@ export default async function TeamFixturesPage({
                         isEliminated={
                           teamEliminatedById.get(match.home_team_id) ?? false
                         }
+                        status={teamDisplayStatusById.get(match.home_team_id)}
                       />
                       <span className="text-gray-500">v</span>
                       <TeamLink
@@ -241,6 +252,7 @@ export default async function TeamFixturesPage({
                         isEliminated={
                           teamEliminatedById.get(match.away_team_id) ?? false
                         }
+                        status={teamDisplayStatusById.get(match.away_team_id)}
                       />
                     </span>
                   </td>

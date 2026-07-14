@@ -6,10 +6,11 @@ import GameNav from "@/components/GameNav";
 import ShareLeaderboardButton from "@/components/ShareLeaderboardButton";
 import TeamLink from "@/components/TeamLink";
 import { supabase } from "@/lib/supabase";
-import { getTeamEliminationMap } from "@/lib/teamStatus";
+import { getTeamStatusMaps } from "@/lib/teamStatus";
 import {
   countPlayedMatchesForTeam,
   formatGoalsInGames,
+  getLiveGoalsForTeam,
   type TeamMatchRow,
 } from "@/lib/teamGames";
 
@@ -37,6 +38,16 @@ type GameLeaderboardTeamRow = {
 
 type DrawRoundSettingRow = {
   is_open: boolean;
+};
+
+type LiveLeaderboardRow = GameLeaderboardRow & {
+  display_total_goals: number;
+  final_total_goals: number;
+  live_goals: number;
+};
+
+type LiveLeaderboardTeamRow = GameLeaderboardTeamRow & {
+  live_goals: number;
 };
 
 const ENTRY_FEE = 5;
@@ -95,7 +106,7 @@ function getPlainDisplayStatus(totalGoals: number) {
   return `${21 - totalGoals} to go`;
 }
 
-function sortLeaderboard(rows: GameLeaderboardRow[]) {
+function sortLeaderboard<T extends { total_goals: number }>(rows: T[]) {
   return [...rows].sort((a, b) => {
     const aGoals = a.total_goals;
     const bGoals = b.total_goals;
@@ -245,17 +256,27 @@ export default async function GamePage({
   }
 
   const leaderboardTeams = (teamsData ?? []) as GameLeaderboardTeamRow[];
-  const teamEliminatedById = await getTeamEliminationMap();
+  const { teamEliminatedById, teamDisplayStatusById } =
+    await getTeamStatusMaps();
   const { data: matchesData } = await supabase
     .from("matches_display")
-    .select("home_team_id, away_team_id, status, kickoff_time");
+    .select(
+      "home_team_id, away_team_id, home_goals, away_goals, status, kickoff_time"
+    );
   const matches = (matchesData ?? []) as TeamMatchRow[];
 
-  const teamsByPlayer = new Map<number, GameLeaderboardTeamRow[]>();
+  const teamsByPlayer = new Map<number, LiveLeaderboardTeamRow[]>();
 
   for (const team of leaderboardTeams) {
     const existingTeams = teamsByPlayer.get(team.player_id) ?? [];
-    existingTeams.push(team);
+    existingTeams.push({
+      ...team,
+      live_goals: getLiveGoalsForTeam(
+        matches,
+        team.team_id,
+        team.scoring_starts_at
+      ),
+    });
     teamsByPlayer.set(team.player_id, existingTeams);
   }
 
@@ -273,22 +294,44 @@ export default async function GamePage({
     });
   }
 
-  const shareRows = leaderboard.map((row, index) => ({
+  const liveLeaderboard = sortLeaderboard(
+    leaderboard.map((row) => {
+      const liveGoals = (teamsByPlayer.get(row.player_id) ?? []).reduce(
+        (total, team) => total + team.live_goals,
+        0
+      );
+
+      return {
+        ...row,
+        total_goals: row.total_goals + liveGoals,
+        display_total_goals: row.total_goals + liveGoals,
+        final_total_goals: row.total_goals,
+        live_goals: liveGoals,
+      };
+    })
+  ) as LiveLeaderboardRow[];
+
+  const shareRows = liveLeaderboard.map((row, index) => ({
     rank: index + 1,
     playerName: row.player_name,
-    totalGoals: row.total_goals,
-    status: getPlainDisplayStatus(row.total_goals),
+    totalGoals: row.display_total_goals,
+    liveGoals: row.live_goals,
+    status: `${getPlainDisplayStatus(row.display_total_goals)}${
+      row.live_goals > 0 ? " (live)" : ""
+    }`,
     teams: (teamsByPlayer.get(row.player_id) ?? []).map((team) => ({
       name: team.team_name,
       code: team.team_code,
       flagUrl: team.flag_image_url,
-      goals: team.counting_goals,
+      goals: team.counting_goals + team.live_goals,
+      liveGoals: team.live_goals,
       gamesPlayed: countPlayedMatchesForTeam(
         matches,
         team.team_id,
         team.scoring_starts_at
       ),
       isEliminated: teamEliminatedById.get(team.team_id) ?? false,
+      status: teamDisplayStatusById.get(team.team_id) ?? "active",
     })),
   }));
 
@@ -353,14 +396,14 @@ export default async function GamePage({
             </thead>
 
             <tbody>
-              {leaderboard.map((row, index) => {
+              {liveLeaderboard.map((row, index) => {
                 const playerTeams = teamsByPlayer.get(row.player_id) ?? [];
 
                 return (
                   <tr
                     id={`player-${row.player_id}`}
                     key={row.player_id}
-                    className={getRowClass(row.total_goals)}
+                    className={getRowClass(row.display_total_goals)}
                   >
                     <td className="p-3 sm:p-4 align-top font-semibold text-gray-700">
                       {index + 1}
@@ -368,12 +411,12 @@ export default async function GamePage({
 
                     <td className="p-3 sm:p-4 align-top">
                       <div className="font-semibold text-gray-950">
-                        {row.total_goals === 21 && (
+                        {row.display_total_goals === 21 && (
                           <span className="mr-1" aria-label="perfect 21">
                             🏆
                           </span>
                         )}
-                        {row.total_goals > 21 && (
+                        {row.display_total_goals > 21 && (
                           <span className="mr-1" aria-label="bust">
                             💩
                           </span>
@@ -410,11 +453,14 @@ export default async function GamePage({
                                 isEliminated={
                                   teamEliminatedById.get(team.team_id) ?? false
                                 }
+                                status={teamDisplayStatusById.get(
+                                  team.team_id
+                                )}
                               />
                               <span>
                                 (
                                 {formatGoalsInGames(
-                                  team.counting_goals,
+                                  team.counting_goals + team.live_goals,
                                   countPlayedMatchesForTeam(
                                     matches,
                                     team.team_id,
@@ -423,6 +469,11 @@ export default async function GamePage({
                                 )}
                                 )
                               </span>
+                              {team.live_goals > 0 && (
+                                <span className="rounded-full bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-amber-800">
+                                  live +{team.live_goals}
+                                </span>
+                              )}
                             </span>
                           ))
                         ) : (
@@ -443,13 +494,27 @@ export default async function GamePage({
                     </td>
 
                     <td className="p-3 sm:p-4 align-top text-right text-lg font-bold text-gray-950">
-                      {row.total_goals}
+                      {row.display_total_goals}
+                      {row.live_goals > 0 && (
+                        <div className="mt-1 text-xs font-semibold text-amber-700">
+                          {row.final_total_goals} final + {row.live_goals} live
+                        </div>
+                      )}
                     </td>
 
                     <td className="p-3 sm:p-4 align-top text-right">
-                      <span className={getStatusBadgeClass(row.total_goals)}>
-                        {getDisplayStatus(row.total_goals)}
+                      <span
+                        className={getStatusBadgeClass(
+                          row.display_total_goals
+                        )}
+                      >
+                        {getDisplayStatus(row.display_total_goals)}
                       </span>
+                      {row.live_goals > 0 && (
+                        <div className="mt-2 text-xs font-bold uppercase text-amber-700">
+                          Live provisional
+                        </div>
+                      )}
                     </td>
                   </tr>
                 );
