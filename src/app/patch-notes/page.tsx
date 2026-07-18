@@ -84,7 +84,7 @@ const changes = [
   {
     title: "Live provisional leaderboard scoring",
     details:
-      "During the remaining match windows, score sync runs every minute and leaderboards include clearly marked provisional live goals until the final score is confirmed.",
+      "During match windows, leaderboards can include clearly marked provisional live goals after each scheduled score sync until the final score is confirmed.",
   },
 ];
 
